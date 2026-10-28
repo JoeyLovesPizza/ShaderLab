@@ -1,0 +1,17 @@
+/* Figma's effect and paint styles. */
+:root {
+  /* Shadow -sm: drop shadow 0 2, blur 7, spread 2, black at 9%. */
+  --shadow-sm: 0 2px 7px 2px rgb(0 0 0 / 0.09);
+
+  /* Hover background: "Background hover for menu items." White at 60%. */
+  --hover-background: rgb(255 255 255 / 0.6);
+
+  /* Linear. Figma draws it from the top right to the bottom left. 225deg
+     matches that on a square box; on a wide one, check it against Figma. */
+  --gradient-linear: linear-gradient(
+    225deg,
+    #eb79eb 0%,
+    #005bef 49.5%,
+    #4afce7 100%
+  );
+}

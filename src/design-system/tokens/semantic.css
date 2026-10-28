@@ -1,0 +1,49 @@
+/*
+ * Semantic tokens: what a value is for, one-to-one with Figma's two "Styles"
+ * collections. Each one points at a primitive, as the Figma alias does.
+ */
+
+/* Styles - Color */
+:root {
+  --type-headline-primary: var(--grey-900);
+  --type-headline-secondary: var(--grey-300);
+  --type-body-primary: var(--grey-700);
+  --type-link: var(--grey-1000);
+}
+
+/* Not a Figma variable: the page colour the V2 frames are filled with
+   (#fafafa, between Grey/0 and Grey/50). Code-only until Figma has one. */
+:root {
+  --surface-page: #fafafa;
+}
+
+/* Styles - Type, Web mode. */
+:root {
+  --size-headline: var(--size-20);
+  --size-header: var(--size-16);
+  --size-body: var(--size-16);
+  --size-caption: var(--size-14);
+  --line-height-headline: var(--line-height-32);
+  --line-height-header: var(--line-height-24);
+  --line-height-body: var(--line-height-24);
+  /* Figma aliases this to Size/16 on Web (16 either way). */
+  --line-height-caption: var(--size-16);
+}
+
+/* Styles - Type, Mobile mode, on the Mobile grid tier (under 632px). The
+   text styles don't read these (the Mobile frame keeps Web values; see
+   text-styles.css); they're here for anything that wants the Mobile mode. */
+@media (max-width: 631px) {
+  :root {
+    --size-headline: var(--size-24);
+    --size-header: var(--size-20);
+    --size-body: var(--size-18);
+    --size-caption: var(--size-16);
+    /* Figma points this at the Size/36 variable rather than a line height.
+       Mirrored as-is: it resolves to 36px either way. */
+    --line-height-headline: var(--size-36);
+    --line-height-header: var(--line-height-32);
+    --line-height-body: var(--line-height-32);
+    --line-height-caption: var(--line-height-16);
+  }
+}

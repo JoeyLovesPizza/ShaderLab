@@ -1,0 +1,185 @@
+/*
+ * Primitives: the raw values, one-to-one with Figma's three "Primitive"
+ * collections. For colour and type, pages and components read the semantic
+ * tokens in semantic.css instead, which point at these, so re-mapping a role
+ * in Figma is a one-line change there. Spacers and corners have no semantic
+ * layer in Figma, so those are read directly.
+ *
+ * Names: Figma "Grey/500" → --grey-500, "Size/16" → --size-16,
+ * "Spacer/124" → --spacer-124, "Corners/8" → --corner-8. Figma spells the
+ * line heights "Line-heght/24"; the code spells them --line-height-24.
+ */
+
+/* Primitive - Color, Light mode (the only mode the site uses today). */
+:root {
+  --grey-0: #ffffff;
+  --grey-50: #f2f2f2;
+  --grey-100: #e7e7e7;
+  --grey-150: #dcdcdc;
+  --grey-200: #d1d1d1;
+  --grey-250: #c6c6c6;
+  --grey-300: #bbbbbb;
+  --grey-350: #b0b0b0;
+  --grey-400: #a5a5a5;
+  --grey-450: #9a9a9a;
+  --grey-500: #8f8f8f;
+  --grey-550: #848484;
+  --grey-600: #797979;
+  --grey-650: #6e6e6e;
+  --grey-700: #636363;
+  --grey-750: #585858;
+  --grey-800: #4d4d4d;
+  --grey-850: #424242;
+  --grey-900: #373737;
+  --grey-950: #2c2c2c;
+  --grey-1000: #212121;
+
+  --safety-50: #ffe0d6;
+  --safety-100: #ffcfc0;
+  --safety-150: #ffbeaa;
+  --safety-200: #ffad94;
+  --safety-250: #ff9c7e;
+  --safety-300: #ff8b68;
+  --safety-350: #ff7a52;
+  --safety-400: #ff6a3c;
+  --safety-450: #ff5926;
+  --safety-500: #ff4810;
+  --safety-550: #f93a00;
+  --safety-600: #e33500;
+  --safety-650: #cd3000;
+  --safety-700: #b72b00;
+  --safety-750: #a12600;
+  --safety-800: #8b2000;
+  --safety-850: #751b00;
+  --safety-900: #5f1600;
+  --safety-950: #491100;
+  --safety-1000: #330c00;
+
+  --horizon-50: #d6d7ff;
+  --horizon-100: #c0c1ff;
+  --horizon-150: #aaacff;
+  --horizon-200: #9496ff;
+  --horizon-250: #7e80ff;
+  --horizon-300: #686bff;
+  --horizon-350: #5255ff;
+  --horizon-400: #3c3fff;
+  --horizon-450: #262aff;
+  --horizon-500: #1014ff;
+  --horizon-550: #0004f9;
+  --horizon-600: #0004e3;
+  --horizon-650: #0003cd;
+  --horizon-700: #0003b7;
+  --horizon-750: #0003a1;
+  --horizon-800: #00028b;
+  --horizon-850: #000275;
+  --horizon-900: #00025f;
+  --horizon-950: #000149;
+  --horizon-1000: #000133;
+}
+
+/* Primitive - Color, Dark mode. Carried over from Figma so the values live
+   in one place, but nothing sets data-theme yet: the site is Light only until
+   a dark theme is designed. Safety's Dark values are all #ffffff in Figma,
+   which looks like a placeholder. */
+:root[data-theme='dark'] {
+  --grey-0: #000000;
+  --grey-50: #212121;
+  --grey-100: #2c2c2c;
+  --grey-150: #373737;
+  --grey-200: #424242;
+  --grey-250: #4d4d4d;
+  --grey-300: #585858;
+  --grey-350: #636363;
+  --grey-400: #6e6e6e;
+  --grey-450: #797979;
+  --grey-500: #848484;
+  --grey-550: #8f8f8f;
+  --grey-600: #9a9a9a;
+  --grey-650: #a5a5a5;
+  --grey-700: #b0b0b0;
+  --grey-750: #bbbbbb;
+  --grey-800: #c6c6c6;
+  --grey-850: #d1d1d1;
+  --grey-900: #dcdcdc;
+  --grey-950: #e7e7e7;
+  --grey-1000: #f2f2f2;
+
+  --safety-50: #ffffff;
+  --safety-100: #ffffff;
+  --safety-150: #ffffff;
+  --safety-200: #ffffff;
+  --safety-250: #ffffff;
+  --safety-300: #ffffff;
+  --safety-350: #ffffff;
+  --safety-400: #ffffff;
+  --safety-450: #ffffff;
+  --safety-500: #ffffff;
+  --safety-550: #ffffff;
+  --safety-600: #ffffff;
+  --safety-650: #ffffff;
+  --safety-700: #ffffff;
+  --safety-750: #ffffff;
+  --safety-800: #ffffff;
+  --safety-850: #ffffff;
+  --safety-900: #ffffff;
+  --safety-950: #ffffff;
+  --safety-1000: #ffffff;
+
+  --horizon-50: #000133;
+  --horizon-100: #000149;
+  --horizon-150: #00025f;
+  --horizon-200: #000275;
+  --horizon-250: #00028b;
+  --horizon-300: #0003a1;
+  --horizon-350: #0003b7;
+  --horizon-400: #0003cd;
+  --horizon-450: #0004e3;
+  --horizon-500: #0004f9;
+  --horizon-550: #1014ff;
+  --horizon-600: #262aff;
+  --horizon-650: #3c3fff;
+  --horizon-700: #5255ff;
+  --horizon-750: #686bff;
+  --horizon-800: #7e80ff;
+  --horizon-850: #9496ff;
+  --horizon-900: #aaacff;
+  --horizon-950: #c0c1ff;
+  --horizon-1000: #d6d7ff;
+}
+
+/* Primitive - type */
+:root {
+  --size-64: 64px;
+  --size-48: 48px;
+  --size-36: 36px;
+  --size-32: 32px;
+  --size-24: 24px;
+  --size-20: 20px;
+  --size-18: 18px;
+  --size-16: 16px;
+  --size-14: 14px;
+  --size-12: 12px;
+
+  --line-height-32: 32px;
+  --line-height-24: 24px;
+  --line-height-16: 16px;
+}
+
+/* Primitive - Space */
+:root {
+  --spacer-124: 124px;
+  --spacer-80: 80px;
+  --spacer-64: 64px;
+  --spacer-42: 42px;
+  --spacer-36: 36px;
+  --spacer-24: 24px;
+  --spacer-16: 16px;
+
+  --corner-40: 40px;
+  --corner-24: 24px;
+  --corner-16: 16px;
+  --corner-12: 12px;
+  --corner-8: 8px;
+  --corner-4: 4px;
+  --corner-0: 0px;
+}

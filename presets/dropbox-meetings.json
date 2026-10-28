@@ -1,0 +1,125 @@
+{
+  "base": {
+    "chroma": 0.02,
+    "hue": 20,
+    "locked": false,
+    "value": 0.86
+  },
+  "canvas": {
+    "dpr": 2,
+    "height": 408,
+    "width": 613
+  },
+  "captionMask": false,
+  "depth": {
+    "curve": {
+      "amount": 0.3,
+      "on": true
+    },
+    "haze": {
+      "amount": 0.25,
+      "on": true
+    },
+    "parallax": {
+      "amount": 0.5,
+      "on": true
+    },
+    "relief": {
+      "amount": 0.2,
+      "frequency": 85,
+      "on": false,
+      "twist": 6
+    },
+    "shadow": {
+      "amount": 0.5,
+      "offset": 0.03,
+      "on": false,
+      "rect": [
+        0.08,
+        0.1,
+        0.84,
+        0.8
+      ],
+      "spread": 0.1
+    },
+    "swirl": {
+      "amount": 0.3,
+      "on": false
+    }
+  },
+  "id": "dropbox-meetings",
+  "image": null,
+  "loop": {
+    "fps": 30,
+    "seconds": 24,
+    "stillTime": 6
+  },
+  "masses": [
+    {
+      "chroma": 0.17,
+      "distance": 0.5,
+      "hue": 15,
+      "locked": false,
+      "size": 0.6,
+      "softness": 0.8,
+      "value": 0.5,
+      "x": 0.5,
+      "y": 1.05
+    },
+    {
+      "chroma": 0.07,
+      "distance": 0.8,
+      "hue": 260,
+      "locked": false,
+      "size": 0.3,
+      "softness": 0.9,
+      "value": 0.28,
+      "x": 1.4,
+      "y": 0.15
+    }
+  ],
+  "meta": {
+    "created": "2026-10-28",
+    "name": "Dropbox meetings",
+    "project": "dropbox-meetings"
+  },
+  "modes": {
+    "bold": true,
+    "colour": "warm-cool",
+    "coverage": "blend",
+    "structure": "none"
+  },
+  "schema": 2,
+  "seed": 27,
+  "shader": "masses@1",
+  "states": {
+    "active": {
+      "transition": {
+        "duration": 0.6,
+        "durationOut": 0.9,
+        "ease": "inOut"
+      },
+      "uniforms": {
+        "u_contrast": 0.9,
+        "u_exposure": 0.15
+      }
+    },
+    "hover": {
+      "transition": {
+        "duration": 0.3,
+        "durationOut": 0.45,
+        "ease": "out"
+      },
+      "uniforms": {
+        "u_exposure": 0.08
+      }
+    },
+    "idle": {
+      "loop": true,
+      "uniforms": {}
+    }
+  },
+  "texture": {
+    "grain": 0.06
+  }
+}

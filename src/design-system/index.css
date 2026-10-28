@@ -1,0 +1,8 @@
+/* The Portfolio design system's tokens, copied on 2026-10-28 from
+   ../Portfolio/src/design-system/ (primitives, semantic, effects). The page
+   grid, text styles and fonts were left behind on purpose: ShaderLab lays
+   itself out, and the fonts are licensed. Re-copy when Portfolio re-syncs
+   from Figma. Imported once, from src/main.tsx. */
+@import './tokens/primitives.css';
+@import './tokens/semantic.css';
+@import './effects.css';

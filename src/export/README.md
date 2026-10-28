@@ -1,0 +1,3 @@
+Export paths from SPEC.md §4, driven from the Export sheet over Focus (§6): `png.ts` renders the poster frame offscreen at 2× through the shared stage and hands back a Blob (guaranteed); `preset.ts` turns the card's draft back into a preset and serialises it with sorted keys; `download.ts` hands a Blob to the browser; `webm.ts` is the WebCodecs `VideoEncoder` path (stubbed until it lands). Files are named `card-<project>.*`.
+
+Grain is static by default (hashed from the seed, not the frame), which is also why the WebM loops will compress far better than animated grain would: the encoder sees the same noise every frame and spends its bits on the masses drifting. A card that turns `grainAnimate` on pays for that in file size.

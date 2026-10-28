@@ -1,0 +1,1 @@
+The app's workflow state machine from SPEC.md §6 (Browse with a grid or rail view → Focus with the Export sheet as a flag, Compose later) as a typed union, its events, and the reducer. Every state owns its layout, panel and transitions; nothing else should hold "which mode are we in".

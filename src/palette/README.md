@@ -1,0 +1,1 @@
+The gradient map: turns a preset's `palette.stops` into the 256×1 RGBA ramp texture the shader samples by luminance (SPEC.md §4), interpolating in OKLCH or sRGB per `palette.space`. Later also the ramp-from-image extractor.

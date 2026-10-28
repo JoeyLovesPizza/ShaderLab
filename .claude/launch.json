@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "shaderlab-dev",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "p=\"$1\"; case \"$p\" in '${port}'|'') p=5176;; esac; exec npm run dev -- --port \"$p\" --strictPort",
+        "sh",
+        "${port}"
+      ],
+      "port": 5176,
+      "autoPort": true
+    }
+  ]
+}

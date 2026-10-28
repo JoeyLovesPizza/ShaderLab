@@ -1,0 +1,1 @@
+Export output: `card-<project>.png`, `card-<project>.webm` and the preset JSON the Export state writes (SPEC.md §6). Gitignored apart from this file; regenerate from `presets/` rather than committing anything here.

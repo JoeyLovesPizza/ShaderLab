@@ -1,0 +1,125 @@
+{
+  "base": {
+    "chroma": 0.03,
+    "hue": 60,
+    "locked": false,
+    "value": 0.26
+  },
+  "canvas": {
+    "dpr": 2,
+    "height": 408,
+    "width": 613
+  },
+  "captionMask": false,
+  "depth": {
+    "curve": {
+      "amount": 0.3,
+      "on": true
+    },
+    "haze": {
+      "amount": 0.25,
+      "on": true
+    },
+    "parallax": {
+      "amount": 0.5,
+      "on": true
+    },
+    "relief": {
+      "amount": 0.2,
+      "frequency": 85,
+      "on": false,
+      "twist": 6
+    },
+    "shadow": {
+      "amount": 0.5,
+      "offset": 0.03,
+      "on": false,
+      "rect": [
+        0.08,
+        0.1,
+        0.84,
+        0.8
+      ],
+      "spread": 0.1
+    },
+    "swirl": {
+      "amount": 0.3,
+      "on": false
+    }
+  },
+  "id": "human-in-the-loop",
+  "image": null,
+  "loop": {
+    "fps": 30,
+    "seconds": 24,
+    "stillTime": 6
+  },
+  "masses": [
+    {
+      "chroma": 0.09,
+      "distance": 0.5,
+      "hue": 78,
+      "locked": false,
+      "size": 0.6,
+      "softness": 0.75,
+      "value": 0.76,
+      "x": 1.2,
+      "y": 0.95
+    },
+    {
+      "chroma": 0.09,
+      "distance": 0.8,
+      "hue": 50,
+      "locked": false,
+      "size": 0.299510603588907,
+      "softness": 0.9,
+      "value": 0.38,
+      "x": 0.3,
+      "y": 0.8
+    }
+  ],
+  "meta": {
+    "created": "2026-10-28",
+    "name": "Human In the Loop",
+    "project": "human-in-the-loop"
+  },
+  "modes": {
+    "bold": false,
+    "colour": "mono",
+    "coverage": "blend",
+    "structure": "none"
+  },
+  "schema": 2,
+  "seed": 11,
+  "shader": "masses@1",
+  "states": {
+    "active": {
+      "transition": {
+        "duration": 0.6,
+        "durationOut": 0.9,
+        "ease": "inOut"
+      },
+      "uniforms": {
+        "u_contrast": 0.9,
+        "u_exposure": 0.15
+      }
+    },
+    "hover": {
+      "transition": {
+        "duration": 0.3,
+        "durationOut": 0.45,
+        "ease": "out"
+      },
+      "uniforms": {
+        "u_exposure": 0.08
+      }
+    },
+    "idle": {
+      "loop": true,
+      "uniforms": {}
+    }
+  },
+  "texture": {
+    "grain": 0.06
+  }
+}

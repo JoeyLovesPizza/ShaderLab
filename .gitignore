@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Exports (PNG, WebM, preset copies bound for Portfolio) are regenerated from
+# presets/, which IS tracked. Only the folder's README is kept.
+out/*
+!out/README.md
+
+# Full-resolution masters and reference imagery stay out of history, as in
+# Portfolio. Drop inspiration images in reference/ freely; they won't be
+# committed. Keep the folder's README.
+reference/*
+!reference/README.md
+assets/**/*.png
+assets/**/*.mp4
+
+# Licensed fonts are never committed (Portfolio and ui-kit do the same).
+# The app uses system-ui for now, so nothing should land here anyway.
+public/fonts/*.woff2
+public/fonts/*.woff
+public/fonts/*.otf
+public/fonts/*.ttf
+
+# Local Claude Code state
+.claude/settings.local.json
+.claude/worktrees/

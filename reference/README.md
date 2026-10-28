@@ -1,0 +1,1 @@
+Drop inspiration images here (SPEC.md §3, question 6). Everything in this folder except this file is gitignored, so originals of any size are fine; the first preset family's ramp will be built from what lands here.

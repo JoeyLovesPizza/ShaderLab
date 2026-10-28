@@ -1,0 +1,125 @@
+{
+  "base": {
+    "chroma": 0.01,
+    "hue": 60,
+    "locked": false,
+    "value": 0.78
+  },
+  "canvas": {
+    "dpr": 2,
+    "height": 408,
+    "width": 613
+  },
+  "captionMask": false,
+  "depth": {
+    "curve": {
+      "amount": 0.3,
+      "on": true
+    },
+    "haze": {
+      "amount": 0.25,
+      "on": true
+    },
+    "parallax": {
+      "amount": 0.5,
+      "on": false
+    },
+    "relief": {
+      "amount": 0.2,
+      "frequency": 85,
+      "on": true,
+      "twist": 6
+    },
+    "shadow": {
+      "amount": 0.5,
+      "offset": 0.03,
+      "on": false,
+      "rect": [
+        0.08,
+        0.1,
+        0.84,
+        0.8
+      ],
+      "spread": 0.1
+    },
+    "swirl": {
+      "amount": 0.3,
+      "on": false
+    }
+  },
+  "id": "showreel",
+  "image": null,
+  "loop": {
+    "fps": 30,
+    "seconds": 24,
+    "stillTime": 6
+  },
+  "masses": [
+    {
+      "chroma": 0.01,
+      "distance": 0.5,
+      "hue": 60,
+      "locked": false,
+      "size": 0.6,
+      "softness": 0.8,
+      "value": 0.3,
+      "x": 0.6,
+      "y": 0.5
+    },
+    {
+      "chroma": 0.12,
+      "distance": 0.8,
+      "hue": 45,
+      "locked": false,
+      "size": 0.17970636215334423,
+      "softness": 0.85,
+      "value": 0.74,
+      "x": 1.2,
+      "y": 0.85
+    }
+  ],
+  "meta": {
+    "created": "2026-10-28",
+    "name": "Showreel",
+    "project": "showreel"
+  },
+  "modes": {
+    "bold": false,
+    "colour": "mono",
+    "coverage": "blend",
+    "structure": "relief"
+  },
+  "schema": 2,
+  "seed": 43,
+  "shader": "masses@1",
+  "states": {
+    "active": {
+      "transition": {
+        "duration": 0.6,
+        "durationOut": 0.9,
+        "ease": "inOut"
+      },
+      "uniforms": {
+        "u_contrast": 0.9,
+        "u_exposure": 0.15
+      }
+    },
+    "hover": {
+      "transition": {
+        "duration": 0.3,
+        "durationOut": 0.45,
+        "ease": "out"
+      },
+      "uniforms": {
+        "u_exposure": 0.08
+      }
+    },
+    "idle": {
+      "loop": true,
+      "uniforms": {}
+    }
+  },
+  "texture": {
+    "grain": 0.06
+  }
+}

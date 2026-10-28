@@ -1,0 +1,36 @@
+/* Resets and page defaults. The tokens come from src/design-system/, copied
+   from Portfolio so the two apps agree on greys, accents, spacers and
+   corners. No licensed fonts here: system-ui until Joe decides otherwise. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--surface-page);
+  color: var(--type-body-primary);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: var(--size-16);
+  line-height: var(--line-height-24);
+  -webkit-font-smoothing: antialiased;
+}
+
+canvas,
+img,
+video {
+  display: block;
+}
