@@ -27,7 +27,7 @@
     "parallax": {
       "allowed": true,
       "amount": [
-        0.2,
+        0.3,
         0.8
       ],
       "on": true
@@ -110,16 +110,18 @@
   },
   "meta": {
     "created": "2026-10-28",
-    "name": "masses@1 family (Critic defaults, SPEC.md §4, 2026-10-28)"
+    "name": "masses@1 family (Critic defaults, SPEC.md §4, 2026-10-28)",
+    "version": 2
   },
   "motion": {
+    "amount": 0.6,
     "angle": 20,
-    "driftRadius": 0.03,
+    "driftRadius": 0.1,
     "driftRange": [
-      0.02,
-      0.05
+      0.03,
+      0.2
     ],
-    "speed": 1
+    "speed": 2
   },
   "schema": 2,
   "shader": "masses@1",

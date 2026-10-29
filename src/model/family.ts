@@ -27,7 +27,7 @@ export const DEFAULT_FAMILY: Family = {
     boldAllowed: true,
   },
   texture: { grain: 0.06, range: [0.04, 0.08], animate: false },
-  motion: { driftRadius: 0.03, driftRange: [0.02, 0.05], speed: 1, angle: 20 },
+  motion: { driftRadius: 0.1, driftRange: [0.03, 0.2], speed: 2, amount: 0.6, angle: 20 },
   finish: {
     motionBlur: { allowed: true, length: [0.05, 0.2], intensity: [0.4, 0.8] },
     layerBlur: { allowed: true, radius: [0.02, 0.08], intensity: [0.4, 0.8] },
@@ -35,13 +35,13 @@ export const DEFAULT_FAMILY: Family = {
   captionZone: 0.3,
   depth: {
     curve: { on: true, allowed: true, amount: [0.15, 0.45] },
-    parallax: { on: true, allowed: true, amount: [0.2, 0.8] },
+    parallax: { on: true, allowed: true, amount: [0.3, 0.8] },
     haze: { on: true, allowed: true, amount: [0.1, 0.4] },
-    swirl: { on: false, allowed: true, amount: [0.15, 0.3] },
-    relief: { on: false, allowed: true, amount: [0.25, 0.45], frequency: 60, twist: 6 },
+    swirl: { on: false, allowed: true, amount: [0.2, 0.4] },
+    relief: { on: false, allowed: true, amount: [0.15, 0.35], frequency: 85, twist: 6 },
     shadow: { on: false, allowed: false, amount: [0.3, 0.7] },
   },
-  meta: { name: 'built-in fallback', created: '2026-10-28' },
+  meta: { name: 'built-in fallback', created: '2026-10-28', version: 2 },
 }
 
 /** The load error, when family.json failed and the fallback is in use. */

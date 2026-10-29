@@ -21,7 +21,7 @@
       "on": false
     },
     "parallax": {
-      "amount": 0.5,
+      "amount": 0.6,
       "on": true
     },
     "relief": {
@@ -51,7 +51,7 @@
   "image": null,
   "loop": {
     "fps": 30,
-    "seconds": 24,
+    "seconds": 12,
     "stillTime": 6
   },
   "masses": [

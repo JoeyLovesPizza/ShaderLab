@@ -272,11 +272,13 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
   return { ok: true, value: input as unknown as Preset, issues: [], warnings: warnings.list }
 }
 
-export function validateFamily(input: unknown): ValidationResult<Family> {
+export function validateFamily(raw: unknown): ValidationResult<Family> {
   const issues = new Issues()
-  if (!isObj(input)) {
+  if (!isObj(raw)) {
     return { ok: false, issues: [{ path: '', message: 'family must be an object' }], warnings: [] }
   }
+  // A copy, so a default filled in below never touches the imported JSON.
+  const input: Obj = { ...raw }
   if (input.schema !== 2) issues.add('schema', 'must be 2')
   if (typeof input.shader !== 'string' || !SHADER_ID.test(input.shader)) {
     issues.add('shader', 'must be a versioned id like masses@1')
@@ -305,13 +307,17 @@ export function validateFamily(input: unknown): ValidationResult<Family> {
     issues.range(input.texture, 'range', 'texture', 0, 0.5)
     issues.bool(input.texture, 'animate', 'texture')
   }
-  if (!isObj(input.motion)) issues.add('motion', 'must be { driftRadius, driftRange, speed, angle }')
+  if (!isObj(input.motion)) issues.add('motion', 'must be { driftRadius, driftRange, speed, amount, angle }')
   else {
-    issues.num(input.motion, 'driftRadius', 'motion', 0, 0.5)
-    issues.range(input.motion, 'driftRange', 'motion', 0, 0.5)
-    issues.num(input.motion, 'angle', 'motion', -360, 360)
-    issues.num(input.motion, 'speed', 'motion', 1, 8)
-    if (isNum(input.motion.speed) && !Number.isInteger(input.motion.speed)) {
+    // `amount` arrived after the first families were written; default it.
+    const motion: Obj = { ...input.motion, amount: input.motion.amount ?? 0.6 }
+    input.motion = motion
+    issues.num(motion, 'driftRadius', 'motion', 0, 0.5)
+    issues.range(motion, 'driftRange', 'motion', 0, 0.5)
+    issues.num(motion, 'amount', 'motion', 0, 1)
+    issues.num(motion, 'angle', 'motion', -360, 360)
+    issues.num(motion, 'speed', 'motion', 1, 8)
+    if (isNum(motion.speed) && !Number.isInteger(motion.speed)) {
       issues.add('motion.speed', 'must be a whole number of revolutions per loop, or the loop will not join')
     }
   }

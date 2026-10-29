@@ -198,10 +198,15 @@ export interface Family {
     animate: boolean
   }
   motion: {
+    /** Radius of each mass's drift circle, card widths, at Motion 0.6. */
     driftRadius: number
     driftRange: Range
-    /** Revolutions per loop, an integer, so the loop stays seamless. */
+    /** Revolutions per loop, an integer, so the loop stays seamless. The
+        Motion dial overrides it: 1 below 0.45, 2 to 0.85, 3 above. */
     speed: number
+    /** The one knob, 0..1 (default 0.6): scales the drift radius and
+        picks the revolutions per loop together. */
+    amount: number
     /** The family's direction in degrees: the pleats run along it, and a
         motion blur that follows the family blurs along it. */
     angle: number
@@ -219,7 +224,9 @@ export interface Family {
     relief: FamilyLayer & { frequency: number; twist: number }
     shadow: FamilyLayer
   }
-  meta: { name: string; created: string }
+  /** `version` rises when the family's defaults change in a way that makes
+      an older session's overlays stale; the card store clears them once. */
+  meta: { name: string; created: string; version?: number }
 }
 
 /** Tonal rules (SPEC.md §2): nothing below or above these in OKLCH L. */

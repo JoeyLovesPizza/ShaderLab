@@ -38,7 +38,13 @@ if (import.meta.env.DEV) {
 
 export default function App() {
   const [state, dispatch] = useReducer(reduce, initialState)
-  const reduced = useReducedMotion() ?? false
+  // The OS's reduce-motion setting freezes every card at its poster, as
+  // the exported cards will on a visitor's machine. In the tool that reads
+  // as "the animations don't work", so it is shown, with a way to play
+  // anyway for this session.
+  const osReduced = useReducedMotion() ?? false
+  const [playAnyway, setPlayAnyway] = useState(false)
+  const reduced = osReduced && !playAnyway
   const rect = useFocusRect()
   const statsRef = useRef<HTMLSpanElement>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -204,6 +210,16 @@ export default function App() {
             </span>
           )}
         </span>
+        {osReduced && (
+          <button
+            type="button"
+            className={`pill${playAnyway ? '' : ' pill--primary'}`}
+            onClick={() => setPlayAnyway((p) => !p)}
+            title="macOS Reduce Motion is on, so cards hold their poster frame; this plays them in the tool only"
+          >
+            {playAnyway ? 'Reduced motion: overridden' : 'Reduced motion is on · play anyway'}
+          </button>
+        )}
         {notice && <span className="bar__notice">{notice}</span>}
         <span ref={statsRef} className="bar__stats">
           idle

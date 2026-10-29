@@ -1,0 +1,24 @@
+/* ShaderLab background on a card's art layer (ShaderBackground.tsx).
+   Fills the art box; later siblings paint on top. The art box has to be a
+   positioning context, which .card-art already is in spirit (it clips and
+   rounds); this makes it explicit. */
+.card-art {
+  position: relative;
+}
+
+.shader-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Artwork placed after a background needs its own stacking position so it
+   paints above the absolutely positioned background. */
+.shader-background ~ .case-study-image {
+  position: relative;
+}

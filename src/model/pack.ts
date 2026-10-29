@@ -92,8 +92,12 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_grainAnimate = family.texture.animate ? 1 : 0
   u.u_captionMask = draft.captionMask ? 1 : 0
   u.u_captionZone = family.captionZone
-  u.u_driftRadius = family.motion.driftRadius
-  u.u_speed = family.motion.speed
+  // The Motion dial: one knob. It scales the drift radius (card widths,
+  // so × aspect into the shader's units) about its 0.6 default, and picks
+  // the revolutions per loop, which must stay whole for a seamless loop.
+  const motion = family.motion.amount
+  u.u_driftRadius = family.motion.driftRadius * aspect * (motion / 0.6)
+  u.u_speed = motion < 0.45 ? 1 : motion < 0.85 ? 2 : 3
   u.u_angle = family.motion.angle
   return u
 }

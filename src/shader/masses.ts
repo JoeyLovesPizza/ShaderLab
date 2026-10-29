@@ -190,8 +190,10 @@ void main() {
 
   // Swirl: the space the masses live in, dragged a little.
   vec2 q = p;
+  // Its noise samples the same loop circle, with a radius that grows with
+  // the drift, so the marbling moves with the masses rather than hanging.
   if (u_swirl >= 0.0) {
-    vec2 loop = circle * 0.6 + 3.0;
+    vec2 loop = circle * (0.3 + 3.0 * u_driftRadius) + 3.0;
     q += swirlOffset(p, loop) * u_swirl * 0.6;
   }
 

@@ -162,7 +162,8 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
       },
     },
     motion: {
-      speed: slider(family.motion.speed, 1, 4, 1),
+      // One knob for how much everything moves (family-wide).
+      motion: slider(family.motion.amount, 0, 1, 0.01),
       loopSeconds: slider(draft.loop.seconds, 2, 60, 0.5),
       playing: !reduced,
       state: select(STATES, 'idle'),
@@ -391,20 +392,20 @@ export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
     return subscribeCards(push)
   }, [dial, preset.id])
 
-  // --- Family dials: variety, grain animation, speed ---------------------------
+  // --- Family dials: variety, grain animation, motion ---------------------------
   const variety = v.variety as number
   const grainAnimate = (v.texture as Values).animate as boolean
-  const speed = (v.motion as Values).speed as number
+  const motionAmount = (v.motion as Values).motion as number
   useEffect(() => {
     const f = getFamily()
-    if (f.variety === variety && f.texture.animate === grainAnimate && f.motion.speed === speed) return
+    if (f.variety === variety && f.texture.animate === grainAnimate && f.motion.amount === motionAmount) return
     setFamily((fam) => ({
       ...fam,
       variety,
       texture: { ...fam.texture, animate: grainAnimate },
-      motion: { ...fam.motion, speed },
+      motion: { ...fam.motion, amount: motionAmount },
     }))
-  }, [variety, grainAnimate, speed])
+  }, [variety, grainAnimate, motionAmount])
 
   // --- Transport and states, only with a live card ------------------------------
   const motion = v.motion as Values

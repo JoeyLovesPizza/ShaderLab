@@ -1,0 +1,12 @@
+{
+  "readme": "ShaderLab backgrounds for Portfolio carousel cards. One entry per project id. `file` is the art-layer image, `preset` is the ShaderLab recipe it was rendered from, `shadowColor` is the image's average colour for projects.ts. See ~/Projects/ShaderLab/handoff/README.md.",
+  "size": { "width": 1226, "height": 816, "cardWidth": 613, "cardHeight": 408 },
+  "backgrounds": [
+    { "id": "wildflower", "project": "Wildflower", "file": "/work/shaders/card-wildflower.webp", "preset": "/shaders/wildflower.json", "shadowColor": "#AA765F", "palette": "cream base, poppy orange and magenta masses, warm shadow" },
+    { "id": "human-in-the-loop", "project": "Human In the Loop", "file": "/work/shaders/card-human-in-the-loop.webp", "preset": "/shaders/human-in-the-loop.json", "shadowColor": "#B08B58", "palette": "dark umber base, amber window light, leather" },
+    { "id": "dash", "project": "Dash", "file": "/work/shaders/card-dash.webp", "preset": "/shaders/dash.json", "shadowColor": "#B58EA9", "palette": "mauve base, pink light, plum shadow, pleats" },
+    { "id": "dropbox-meetings", "project": "Dropbox meetings", "file": "/work/shaders/card-dropbox-meetings.webp", "preset": "/shaders/dropbox-meetings.json", "shadowColor": "#A44053", "palette": "grey base, crimson rise, navy shadow" },
+    { "id": "paper", "project": "Paper", "file": "/work/shaders/card-paper.webp", "preset": "/shaders/paper.json", "shadowColor": "#4A6687", "palette": "navy base, sky light, peach" },
+    { "id": "showreel", "project": "Showreel", "file": "/work/shaders/card-showreel.webp", "preset": "/shaders/showreel.json", "shadowColor": "#644D41", "palette": "grey base, dark blob, aperol light, pleats" }
+  ]
+}

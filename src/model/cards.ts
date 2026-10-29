@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { getFamily } from './family'
 import { PRESETS } from './presets'
 import type { CardDraft, Preset } from './types'
 
@@ -14,6 +15,23 @@ import type { CardDraft, Preset } from './types'
 
 const STORAGE_KEY = 'shaderlab:overlays'
 const DIRTY_KEY = 'shaderlab:dirty'
+const VERSION_KEY = 'shaderlab:familyVersion'
+
+// When the family's defaults move on (a new `meta.version`), overlays and
+// panel state from an older session would keep the old motion, loop or
+// pauses alive over the new files. Cleared once, then the version is noted.
+try {
+  const current = getFamily().meta.version ?? 1
+  const stored = Number(localStorage.getItem(VERSION_KEY) ?? '0')
+  if (stored < current) {
+    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(DIRTY_KEY)
+    for (const key of Object.keys(localStorage)) if (key.startsWith('dialkit:')) localStorage.removeItem(key)
+    localStorage.setItem(VERSION_KEY, String(current))
+  }
+} catch {
+  // Storage blocked: nothing stale to clear.
+}
 const DRAFT_KEYS: (keyof CardDraft)[] = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'finish', 'captionMask', 'loop']
 
 export function draftOf(preset: Preset): CardDraft {
