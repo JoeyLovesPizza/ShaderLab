@@ -23,6 +23,14 @@ export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTi
       size: r(m.size),
       softness: r(m.softness),
       distance: r(m.distance),
+      path: {
+        start: { x: r(m.path.start.x), y: r(m.path.start.y) },
+        end: { x: r(m.path.end.x), y: r(m.path.end.y) },
+      },
+      ramp: {
+        start: { hue: r(m.ramp.start.hue, 1), value: r(m.ramp.start.value), chroma: r(m.ramp.start.chroma) },
+        end: { hue: r(m.ramp.end.hue, 1), value: r(m.ramp.end.value), chroma: r(m.ramp.end.chroma) },
+      },
     })),
     texture: { grain: r(draft.texture.grain) },
     depth: {

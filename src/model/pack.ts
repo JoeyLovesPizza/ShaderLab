@@ -48,21 +48,36 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   const pos: number[] = []
   const params: number[] = []
   const opacity: number[] = []
+  const kind: number[] = []
+  const start: number[] = []
+  const end: number[] = []
+  const labStart: number[] = []
+  const labEnd: number[] = []
   masses.forEach((mass, i) => {
     lab.push(...oklchToLab(mass.hue, mass.value, mass.chroma))
     pos.push(mass.x, mass.y)
     params.push(mass.size * aspect, mass.softness, mass.distance, phases[i])
     opacity.push(1)
+    kind.push(mass.kind === 'ridge' ? 1 : 0)
+    start.push(mass.path.start.x, mass.path.start.y)
+    end.push(mass.path.end.x, mass.path.end.y)
+    labStart.push(...oklchToLab(mass.ramp.start.hue, mass.ramp.start.value, mass.ramp.start.chroma))
+    labEnd.push(...oklchToLab(mass.ramp.end.hue, mass.ramp.end.value, mass.ramp.end.chroma))
   })
-  while (lab.length < 3 * MAX_MASSES) lab.push(0)
-  while (pos.length < 2 * MAX_MASSES) pos.push(0)
-  while (params.length < 4 * MAX_MASSES) params.push(0)
-  while (opacity.length < MAX_MASSES) opacity.push(0)
+  const fill = (arr: number[], n: number) => {
+    while (arr.length < n) arr.push(0)
+    return arr
+  }
   u.u_massCount = masses.length
-  u.u_massLab = lab
-  u.u_massPos = pos
-  u.u_massParams = params
-  u.u_massOpacity = opacity
+  u.u_massLab = fill(lab, 3 * MAX_MASSES)
+  u.u_massPos = fill(pos, 2 * MAX_MASSES)
+  u.u_massParams = fill(params, 4 * MAX_MASSES)
+  u.u_massOpacity = fill(opacity, MAX_MASSES)
+  u.u_massKind = fill(kind, MAX_MASSES)
+  u.u_massStart = fill(start, 2 * MAX_MASSES)
+  u.u_massEnd = fill(end, 2 * MAX_MASSES)
+  u.u_massLabStart = fill(labStart, 3 * MAX_MASSES)
+  u.u_massLabEnd = fill(labEnd, 3 * MAX_MASSES)
 
   const amount = (layer: { on: boolean; amount: number }) => (layer.on ? layer.amount : -1)
   const d = draft.depth
@@ -93,6 +108,15 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_motionAngle = f.motionBlur.followAngle ? family.motion.angle : f.motionBlur.angle
   u.u_motionLength = f.motionBlur.length
   u.u_motionIntensity = f.motionBlur.intensity
+  // Strokes are smeared, not drawn: a short motion blur along their angle
+  // turns the lines into fibres (the Critic). It takes the Finish pass over
+  // while Strokes is on.
+  if (d.strokes.on) {
+    u.u_motionOn = 1
+    u.u_motionAngle = u.u_strokesAngle
+    u.u_motionLength = 0.03
+    u.u_motionIntensity = 0.85
+  }
   u.u_layerOn = f.layerBlur.on ? 1 : 0
   u.u_layerRadius = f.layerBlur.radius
   u.u_layerIntensity = f.layerBlur.intensity

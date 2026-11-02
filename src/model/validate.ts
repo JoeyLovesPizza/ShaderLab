@@ -4,6 +4,7 @@ import {
   DEPTH_ORDER,
   L_MAX,
   L_MIN,
+  MASS_KINDS,
   MAX_MASSES,
   STRUCTURE_LAYERS,
   STRUCTURE_MODES,
@@ -61,14 +62,16 @@ function checkLayer(issues: Issues, value: unknown, path: string) {
     return null
   }
   issues.bool(value, 'on', path)
-  // Light carries a height, not an amount: it scales the field it shades.
-  issues.num(value, path.endsWith('light') ? 'height' : 'amount', path, 0, 1)
+  // Light carries a height, not an amount: it scales the field it shades,
+  // up to 2 (the Critic: at 0.5 a soft mass's normal barely tilted).
+  if (path.endsWith('light')) issues.num(value, 'height', path, 0, 2)
+  else issues.num(value, 'amount', path, 0, 1)
   return value
 }
 
 /** Depth parameters added after the first files; filled when missing. */
 const SWIRL_SCALE_DEFAULT = 0.6
-const STROKES_DEFAULT = { direction: 20, followAngle: true, length: 0.4, density: 80 }
+const STROKES_DEFAULT = { direction: 20, followAngle: true, length: 0.4, density: 150 }
 
 /** Fields added after the first files were written take their defaults
     when missing, so an older file still loads as it did. */
@@ -85,7 +88,7 @@ const LAYER_DEFAULT: Record<string, Obj> = {
   haze: { on: false, amount: 0 },
   swirl: { on: false, amount: 0, scale: 0.6 },
   relief: { on: false, amount: 0, frequency: 85, twist: 6 },
-  strokes: { on: false, amount: 0.05, direction: 20, followAngle: true, length: 0.4, density: 80 },
+  strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150 },
   shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
 }
 
@@ -117,7 +120,12 @@ function withDefaults(input: Obj, warnings: Issues): Obj {
     // scale is the original marbling; strokes without their shape take
     // the family's.
     if (isObj(depth.swirl) && depth.swirl.scale === undefined) depth.swirl = { ...depth.swirl, scale: SWIRL_SCALE_DEFAULT }
-    if (isObj(depth.strokes)) depth.strokes = { ...STROKES_DEFAULT, ...depth.strokes }
+    if (isObj(depth.strokes)) {
+      // followField (2026-11-02, one round) is gone: strokes keep a direction.
+      const { followField: _followField, ...strokes } = depth.strokes
+      if (_followField !== undefined) warnings.add('depth.strokes.followField', 'no longer exists; the key was ignored')
+      depth.strokes = { ...STROKES_DEFAULT, ...strokes }
+    }
     for (const key of Object.keys(out.depth)) {
       if (!(DEPTH_ORDER as readonly string[]).includes(key)) {
         warnings.add(`depth.${key}`, 'no such layer; the key was ignored')
@@ -150,20 +158,64 @@ function checkFinish(issues: Issues, value: unknown) {
   issues.num(l, 'intensity', 'finish.layerBlur', 0, 1)
 }
 
+function checkColour(issues: Issues, value: Obj, path: string) {
+  issues.num(value, 'hue', path, 0, 360)
+  issues.num(value, 'value', path, L_MIN, L_MAX)
+  issues.num(value, 'chroma', path, 0, 0.4)
+}
+
+function checkPoint(issues: Issues, value: unknown, path: string) {
+  if (!isObj(value)) {
+    issues.add(path, 'must be { x, y }')
+    return
+  }
+  issues.num(value, 'x', path, -1, 3)
+  issues.num(value, 'y', path, -1, 2)
+}
+
+/**
+ * The ridge kind arrived after the first files: a mass without a kind is
+ * a blob, and a blob's unused path and ramp are filled so every mass has
+ * the one shape (the panel shows them for the Kind switch).
+ */
+function withMassDefaults(value: Obj): Obj {
+  const kind = value.kind === 'ridge' ? 'ridge' : 'blob'
+  const x = isNum(value.x) ? value.x : 0
+  const y = isNum(value.y) ? value.y : 0
+  const colour = { hue: value.hue, value: value.value, chroma: value.chroma }
+  const path = isObj(value.path) ? value.path : {}
+  const ramp = isObj(value.ramp) ? value.ramp : {}
+  return {
+    ...value,
+    kind,
+    path: { start: path.start ?? { x: x - 0.4, y: y - 0.2 }, end: path.end ?? { x: x + 0.4, y: y + 0.2 } },
+    ramp: { start: ramp.start ?? { ...colour }, end: ramp.end ?? { ...colour } },
+  }
+}
+
 function checkMass(issues: Issues, value: unknown, path: string): value is Mass {
   if (!isObj(value)) {
     issues.add(path, 'must be a mass')
     return false
   }
-  issues.num(value, 'hue', path, 0, 360)
-  issues.num(value, 'value', path, L_MIN, L_MAX)
-  issues.num(value, 'chroma', path, 0, 0.4)
+  if (!MASS_KINDS.includes(value.kind as never)) issues.add(`${path}.kind`, `must be one of ${MASS_KINDS.join(', ')}`)
+  checkColour(issues, value, path)
   issues.num(value, 'x', path, -1, 3)
   issues.num(value, 'y', path, -1, 2)
   issues.num(value, 'size', path, 0.05, 4)
   issues.num(value, 'softness', path, 0, 1)
   issues.num(value, 'distance', path, 0, 1)
   issues.bool(value, 'locked', path)
+  if (!isObj(value.path)) issues.add(`${path}.path`, 'must be { start, end }')
+  else {
+    checkPoint(issues, value.path.start, `${path}.path.start`)
+    checkPoint(issues, value.path.end, `${path}.path.end`)
+  }
+  if (!isObj(value.ramp) || !isObj(value.ramp.start) || !isObj(value.ramp.end)) issues.add(`${path}.ramp`, 'must be { start, end } colours')
+  else {
+    checkColour(issues, value.ramp.start, `${path}.ramp.start`)
+    checkColour(issues, value.ramp.end, `${path}.ramp.end`)
+  }
   return true
 }
 
@@ -223,7 +275,9 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
   if (!Array.isArray(input.masses) || input.masses.length < 1 || input.masses.length > MAX_MASSES) {
     issues.add('masses', `must be one to ${MAX_MASSES} masses`)
   } else {
-    input.masses.forEach((mass, i) => checkMass(issues, mass, `masses.${i}`))
+    const masses: unknown[] = input.masses.map((mass: unknown) => (isObj(mass) ? withMassDefaults(mass) : mass))
+    input.masses = masses
+    masses.forEach((mass, i) => checkMass(issues, mass, `masses.${i}`))
   }
 
   if (!isObj(input.texture)) issues.add('texture', 'must be { grain }')
@@ -373,7 +427,7 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
   issues.num(input, 'captionZone', '', 0, 0.6)
   // The light arrived after the first families; an older file gets the
   // SPEC.md defaults (from the family's angle, 35° up, amount 0.2).
-  const light: Obj = { angle: 20, followAngle: true, elevation: 35, amount: 0.2, ...(isObj(input.light) ? input.light : {}) }
+  const light: Obj = { angle: 90, followAngle: false, elevation: 30, amount: 0.2, ...(isObj(input.light) ? input.light : {}) }
   input.light = light
   issues.num(light, 'angle', 'light', -360, 360)
   issues.bool(light, 'followAngle', 'light')
@@ -395,8 +449,8 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
   else {
     // Layers added after the first families take SPEC.md's defaults.
     const depth: Obj = {
-      light: { on: true, allowed: true, amount: [0.3, 0.7] },
-      strokes: { on: false, allowed: true, amount: [0.03, 0.08], length: 0.4, density: 80 },
+      light: { on: true, allowed: true, amount: [1, 2] },
+      strokes: { on: false, allowed: true, amount: [0.01, 0.03], length: 0.4, density: 150 },
       ...input.depth,
     }
     if (isObj(depth.swirl) && depth.swirl.scale === undefined) depth.swirl = { ...depth.swirl, scale: SWIRL_SCALE_DEFAULT }
@@ -409,7 +463,7 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
       }
       issues.bool(v, 'on', `depth.${layer}`)
       issues.bool(v, 'allowed', `depth.${layer}`)
-      issues.range(v, 'amount', `depth.${layer}`, 0, 1)
+      issues.range(v, 'amount', `depth.${layer}`, 0, layer === 'light' ? 2 : 1)
       if (layer === 'swirl') issues.num(v, 'scale', 'depth.swirl', 0.1, 3)
       if (layer === 'relief') {
         issues.num(v, 'frequency', 'depth.relief', 1, 400)

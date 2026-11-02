@@ -21,7 +21,7 @@
       "on": true
     },
     "light": {
-      "height": 0.5,
+      "height": 1.5,
       "on": true
     },
     "parallax": {
@@ -47,8 +47,8 @@
       "spread": 0.1
     },
     "strokes": {
-      "amount": 0.05,
-      "density": 80,
+      "amount": 0.018,
+      "density": 150,
       "direction": 20,
       "followAngle": true,
       "length": 0.4,
@@ -72,7 +72,30 @@
       "chroma": 0.14,
       "distance": 0.5,
       "hue": 40,
+      "kind": "blob",
       "locked": false,
+      "path": {
+        "end": {
+          "x": 1.55,
+          "y": 1.05
+        },
+        "start": {
+          "x": 0.75,
+          "y": 0.65
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.14,
+          "hue": 40,
+          "value": 0.8
+        },
+        "start": {
+          "chroma": 0.14,
+          "hue": 40,
+          "value": 0.8
+        }
+      },
       "size": 0.26955954323001635,
       "softness": 0.7,
       "value": 0.8,
@@ -83,7 +106,30 @@
       "chroma": 0.08,
       "distance": 0.8,
       "hue": 60,
+      "kind": "blob",
       "locked": false,
+      "path": {
+        "end": {
+          "x": 1.7,
+          "y": 0.3
+        },
+        "start": {
+          "x": 0.9,
+          "y": -0.1
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.08,
+          "hue": 60,
+          "value": 0.5
+        },
+        "start": {
+          "chroma": 0.08,
+          "hue": 60,
+          "value": 0.5
+        }
+      },
       "size": 0.1497553017944535,
       "softness": 0.8,
       "value": 0.5,

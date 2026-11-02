@@ -1,4 +1,4 @@
-import type { Preset } from './types'
+import { blobMass, type Preset } from './types'
 import { describe, validatePreset } from './validate'
 
 /*
@@ -35,16 +35,16 @@ export function blankPreset(id: string, name: string): Preset {
     base: { hue: 0, value: 0.5, chroma: 0, locked: false },
     // One neutral mass, parked off the card: the schema wants at least one
     // and the panel's count slider starts at one.
-    masses: [{ hue: 0, value: 0.5, chroma: 0, x: 1.5, y: 0.5, size: 0.4, softness: 0.8, distance: 0.8, locked: false }],
+    masses: [blobMass({ hue: 0, value: 0.5, chroma: 0, x: 1.5, y: 0.5, size: 0.4, softness: 0.8, distance: 0.8, locked: false })],
     texture: { grain: 0 },
     depth: {
-      light: { on: true, height: 0.5 },
+      light: { on: true, height: 1.5 },
       curve: { on: false, amount: 0 },
       parallax: { on: false, amount: 0 },
       haze: { on: false, amount: 0 },
       swirl: { on: false, amount: 0, scale: 0.6 },
       relief: { on: false, amount: 0, frequency: 85, twist: 6 },
-      strokes: { on: false, amount: 0.05, direction: 20, followAngle: true, length: 0.4, density: 80 },
+      strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150 },
       shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
     },
     finish: {

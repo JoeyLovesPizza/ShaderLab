@@ -18,20 +18,54 @@ export interface BaseColor {
   locked: boolean
 }
 
-/** A soft mass of colour or shadow. Lighter or darker than the base. */
-export interface Mass {
+export interface MassColour {
   hue: number
   value: number
   chroma: number
+}
+
+export interface Point {
   x: number
   y: number
-  /** Falloff radius, card widths. */
+}
+
+/**
+ * A soft mass of colour or shadow, lighter or darker than the base. A
+ * `blob` falls off from a point; a `ridge` falls off from a quadratic
+ * Bézier through `x, y` (its middle control point) between `path.start`
+ * and `path.end`, coloured by a three-stop ramp along it (`ramp.start`,
+ * the mass's own colour in the middle, `ramp.end`). Either feeds the
+ * height field by its falloff, so a ridge's crest lifts and the light
+ * shades its upper edge and underside.
+ */
+export interface Mass extends MassColour {
+  kind: 'blob' | 'ridge'
+  x: number
+  y: number
+  /** Falloff radius (a ridge's half width), card widths. */
   size: number
   /** 0.4 is a firm block, 0.9 a long gentle tail. */
   softness: number
   /** 0 near, 1 far: nearer masses drift more under Parallax. */
   distance: number
   locked: boolean
+  /** Ridge only: the ends of the curve, card units. */
+  path: { start: Point; end: Point }
+  /** Ridge only: the colours at t 0 and t 1. */
+  ramp: { start: MassColour; end: MassColour }
+}
+
+export const MASS_KINDS = ['blob', 'ridge'] as const
+
+/** A blob from its own fields, with the ridge fields parked around it. */
+export function blobMass(m: Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
+  const colour = { hue: m.hue, value: m.value, chroma: m.chroma }
+  return {
+    ...m,
+    kind: 'blob',
+    path: { start: { x: m.x - 0.4, y: m.y - 0.2 }, end: { x: m.x + 0.4, y: m.y + 0.2 } },
+    ramp: { start: { ...colour }, end: { ...colour } },
+  }
 }
 
 export interface DepthLayer {

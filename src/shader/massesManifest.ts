@@ -26,6 +26,13 @@ export const UNIFORMS = {
   u_massPos: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
   u_massParams: { kind: 'array', components: 4, count: MAX_MASSES, default: zeros(4 * MAX_MASSES) },
   u_massOpacity: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
+  // Ridges: kind (0 blob, 1 ridge), the curve's ends (its middle control
+  // point is u_massPos), and the ramp's end colours (its middle is u_massLab).
+  u_massKind: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
+  u_massStart: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
+  u_massEnd: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
+  u_massLabStart: { kind: 'array', components: 3, count: MAX_MASSES, default: zeros(3 * MAX_MASSES) },
+  u_massLabEnd: { kind: 'array', components: 3, count: MAX_MASSES, default: zeros(3 * MAX_MASSES) },
   // Depth stack, in order. An amount below zero means the layer is off.
   // Light: the card's height (0..1, or off), and the family's one light.
   u_light: { kind: 'float', default: -1 },

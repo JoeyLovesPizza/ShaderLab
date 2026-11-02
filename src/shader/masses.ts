@@ -60,6 +60,11 @@ uniform vec3  u_massLab[4];    // OKLab
 uniform vec2  u_massPos[4];    // card units: x 0..aspect, y 0..1, y up
 uniform vec4  u_massParams[4]; // size (height units), softness, distance, phase offset
 uniform float u_massOpacity[4];
+uniform float u_massKind[4];      // 0 blob, 1 ridge
+uniform vec2  u_massStart[4];     // a ridge's curve ends; u_massPos is its middle control point
+uniform vec2  u_massEnd[4];
+uniform vec3  u_massLabStart[4];  // a ridge's ramp ends; u_massLab is its middle
+uniform vec3  u_massLabEnd[4];
 
 uniform float u_light;         // the card's height, 0..1; below zero means off
 uniform float u_lightAngle;    // degrees, the light's direction in the plane
@@ -197,8 +202,8 @@ float strokeFibres(float along, float across, float aspect) {
   // ~40:1 at the default length; longer fibres stretch it further.
   float alongK = density / 40.0 * 0.4 / max(u_strokesLength, 0.05);
   float n = snoise(vec4(along * alongK, across * density, 3.0, 9.0))
-          + 0.5 * snoise(vec4(along * alongK * 2.3, across * density * 2.3, 7.0, 13.0));
-  return n / 1.5;
+          + 0.35 * snoise(vec4(along * alongK * 2.1, across * density * 2.1, 7.0, 13.0));
+  return n / 1.35;
 }
 
 float roundedBox(vec2 q, vec2 halfSize, float r) {
@@ -233,13 +238,16 @@ void main() {
   float edge = dot(fromCentre, fromCentre);
   float curve = max(u_curve, 0.0);
   float bow = 1.0 + curve * edge * 1.2;
-  float height = clamp(u_light, 0.0, 1.0);
-  float tilt = 1.0 - curve * 0.35 * clamp(edge, 0.0, 1.0) * (1.0 - height);
+  float height = clamp(u_light, 0.0, 2.0);
+  float tilt = 1.0 - curve * 0.35 * clamp(edge, 0.0, 1.0) * (1.0 - min(height, 1.0));
 
   // The height field h: light masses rise, dark ones sink, Curve bows it,
   // Relief and Strokes ridge it. Only its gradient is needed; the masses'
-  // comes from the falloff's own derivative, the ridges' from taps.
-  vec2 gradMass = -curve * 0.8 * 2.0 * fromCentre;   // the bow: a dome, highest at the centre
+  // comes from the falloff's own derivative, the ridges' from taps. The
+  // bow is a dome that is flat at the centre and falls away at the
+  // edges (h = -curve * edge^2 / 2), so it never reads as one tilt
+  // across the whole card.
+  vec2 gradMass = -curve * 2.0 * edge * fromCentre;
 
   vec3 lab = u_base;
   vec3 labLow = u_base;   // the field without the pleats, for the caption mask
@@ -259,8 +267,46 @@ void main() {
     float r = u_driftRadius * (u_parallax >= 0.0 ? u_parallax * (1.0 - prm.z) : 1.0);
     vec2 c = u_massPos[i] + r * vec2(cos(phase + prm.w), sin(phase + prm.w));
 
-    vec2 d = (q - c) * bow;
-    float dist = length(d);
+    vec2 d;
+    float dist;
+    vec3 M;
+    if (u_massKind[i] > 0.5) {
+      // A ridge: the nearest point on the quadratic Bezier from Start
+      // through c to End (24 samples of t), and the ramp's colour there.
+      vec2 drift = c - u_massPos[i];
+      vec2 P0 = u_massStart[i] + drift;
+      vec2 P2 = u_massEnd[i] + drift;
+      float best = 1e9;
+      float bestT = 0.0;
+      vec2 bestP = c;
+      for (int s = 0; s <= 24; s++) {
+        float t = float(s) / 24.0;
+        vec2 B = mix(mix(P0, c, t), mix(c, P2, t), t);
+        vec2 dd = (q - B) * bow;
+        float dl = dot(dd, dd);
+        if (dl < best) { best = dl; bestT = t; bestP = B; }
+      }
+      // Refined between the neighbouring samples (a ternary search), so
+      // neither the distance nor the ramp steps from sample to sample.
+      float lo = max(bestT - 1.0 / 24.0, 0.0), hi = min(bestT + 1.0 / 24.0, 1.0);
+      for (int s = 0; s < 8; s++) {
+        float t1 = mix(lo, hi, 1.0 / 3.0), t2 = mix(lo, hi, 2.0 / 3.0);
+        vec2 B1 = mix(mix(P0, c, t1), mix(c, P2, t1), t1);
+        vec2 B2 = mix(mix(P0, c, t2), mix(c, P2, t2), t2);
+        vec2 d1 = (q - B1) * bow, d2 = (q - B2) * bow;
+        if (dot(d1, d1) < dot(d2, d2)) hi = t2; else lo = t1;
+      }
+      bestT = 0.5 * (lo + hi);
+      bestP = mix(mix(P0, c, bestT), mix(c, P2, bestT), bestT);
+      d = (q - bestP) * bow;
+      dist = max(length(d), 1e-6);
+      M = bestT < 0.5 ? mix(u_massLabStart[i], u_massLab[i], bestT * 2.0)
+                      : mix(u_massLab[i], u_massLabEnd[i], (bestT - 0.5) * 2.0);
+    } else {
+      d = (q - c) * bow;
+      dist = length(d);
+      M = u_massLab[i];
+    }
     // A plateau, not a point: the mass holds its own colour over a core a
     // quarter of its size, then falls off with an exponent the softness
     // shapes (0.4 is a firm block, 0.9 a long tail).
@@ -269,16 +315,22 @@ void main() {
     float f0 = exp(-0.5 * pow(u, k)) * u_massOpacity[i];
     float f = f0 * tilt;
 
-    vec3 M = u_massLab[i];
     M.x += u_exposure;
     M.yz *= u_contrast;
     bool light = M.x > u_base.x;
 
-    // The falloff's derivative, analytic: zero on the plateau, then the
-    // slope of the exponential, pointing away from the centre.
-    if (u > 0.0 && dist > 1e-5) {
-      float dfdd = f0 * (-0.5 * k * pow(u, k - 1.0) / prm.x) * bow;
-      gradMass += (light ? 1.0 : -1.0) * dfdd * (d / dist);
+    // The height has its own profile: a wide, smooth bell with no plateau
+    // (the colour's mesa, lit, read as an embossed button with a dark rim;
+    // the references' hills are domes). Its slope is gentle, continuous,
+    // and strongest part way out. Analytic, pointing away from the centre.
+    if (dist > 1e-5) {
+      float w = prm.x * 1.1;
+      float bell = exp(-(dist * dist) / (w * w)) * u_massOpacity[i];
+      float dhdd = bell * (-2.0 * dist / (w * w)) * bow;
+      // A ridge is a fold: it always rises, whatever its colour, so the
+      // light finds a crest with a lit upper edge and a shadowed underside.
+      bool lifts = light || u_massKind[i] > 0.5;
+      gradMass += (lifts ? 1.0 : -1.0) * dhdd * (d / dist);
     }
 
     // Composite by mixing toward the mass, in order: a dark mass over a
@@ -304,17 +356,24 @@ void main() {
     float sa = radians(u_strokesAngle);
     vec2 dir = vec2(cos(sa), sin(sa));
     vec2 perp = vec2(-dir.y, dir.x);
-    // Two warps: a slow wave so the fibres undulate, and a finer one so
-    // they do not undulate in unison (which reads as corduroy).
-    float along = dot(q, dir) + 0.2 * snoise(vec4(q * 0.8, 23.0, 5.0));
-    float across = dot(q, perp) + 0.05 * snoise(vec4(q * 1.5, 11.0, 17.0)) + 0.012 * snoise(vec4(q * 4.5, 41.0, 29.0));
+    // Low-frequency fields modulate the amplitude only: n1 lets strokes
+    // come and go, n2 breaks them. Nothing displaces a stroke's position
+    // beyond the one faint wave (under 1% of the card's height), which
+    // keeps the fibres from knotting or bending into contours.
+    float n1 = 0.5 + 0.5 * snoise(vec4(q * 0.9, 31.0, 7.0));
+    float n2 = 0.5 + 0.5 * snoise(vec4(q * 1.3 + 5.0, 43.0, 19.0));
+    float along = dot(q, dir) + 0.025 * snoise(vec4(q * 0.8, 23.0, 5.0));
+    float across = dot(q, perp) + 0.009 * snoise(vec4(q * 1.5, 11.0, 17.0)) + 0.003 * snoise(vec4(q * 4.5, 41.0, 29.0));
+    float presence = (0.3 + 0.7 * n1) * smoothstep(0.35, 0.65, n2);
     // The ridge's slope is kept the same whatever the density.
     float eps = 0.002;
     float sPlus = strokeFibres(along, across + eps, aspect);
     float sMinus = strokeFibres(along, across - eps, aspect);
-    fibres = strokeFibres(along, across, aspect);
+    // The noise's typical swing is about a third of its range: scaled so
+    // the amount is what the fibres actually reach.
+    fibres = strokeFibres(along, across, aspect) * presence;
     float ridge = 0.3 / max(u_strokesDensity, 1.0);
-    gradStrokes = perp * ((sPlus - sMinus) / (2.0 * eps)) * ridge * (u_strokes / 0.05);
+    gradStrokes = perp * ((sPlus - sMinus) / (2.0 * eps)) * ridge * presence * (u_strokes / 0.018);
   }
 
   // Relief: the pleats live at the edge of the nearest light mass, where
@@ -349,8 +408,9 @@ void main() {
     labLow = mix(labLow, u_base, h);
   }
 
-  // Strokes as paint: a little lighter and darker along the fibres.
-  if (u_strokes >= 0.0) lab.x += fibres * u_strokes;
+  // Strokes as paint: lighter and darker along the fibres, a little more
+  // lighten than darken, as a loaded brush leaves.
+  if (u_strokes >= 0.0) lab.x += fibres * u_strokes * (fibres > 0.0 ? 1.15 : 0.85);
 
   // Shadow: a pooled soft shadow where the UI layer will sit, offset down.
   if (u_shadow >= 0.0) {
