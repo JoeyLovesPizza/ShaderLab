@@ -413,7 +413,10 @@ export default function App() {
           <MassesPanel preset={activePreset} handle={focusedId ? handle : null} reduced={reduced} isStatic={isStatic} />
         </CardBoundary>
       )}
-      <DialRoot position="top-right" />
+      {/* DialKit hides framework roots in production builds by default. The
+          hosted site is a production build and the panel is the whole tool,
+          so it stays on everywhere. */}
+      <DialRoot position="top-right" productionEnabled />
     </MotionConfig>
   )
 }
