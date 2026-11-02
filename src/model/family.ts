@@ -33,15 +33,18 @@ export const DEFAULT_FAMILY: Family = {
     layerBlur: { allowed: true, radius: [0.02, 0.08], intensity: [0.4, 0.8] },
   },
   captionZone: 0.3,
+  light: { angle: 20, followAngle: true, elevation: 35, amount: 0.2 },
   depth: {
+    light: { on: true, allowed: true, amount: [0.3, 0.7] },
     curve: { on: true, allowed: true, amount: [0.15, 0.45] },
     parallax: { on: true, allowed: true, amount: [0.3, 0.8] },
     haze: { on: true, allowed: true, amount: [0.1, 0.4] },
-    swirl: { on: false, allowed: true, amount: [0.2, 0.4] },
+    swirl: { on: false, allowed: true, amount: [0.2, 0.4], scale: 0.6 },
     relief: { on: false, allowed: true, amount: [0.15, 0.35], frequency: 85, twist: 6 },
+    strokes: { on: false, allowed: true, amount: [0.03, 0.08], length: 0.4, density: 80 },
     shadow: { on: false, allowed: false, amount: [0.3, 0.7] },
   },
-  meta: { name: 'built-in fallback', created: '2026-10-28', version: 2 },
+  meta: { name: 'built-in fallback', created: '2026-10-28', version: 3 },
 }
 
 /** The load error, when family.json failed and the fallback is in use. */

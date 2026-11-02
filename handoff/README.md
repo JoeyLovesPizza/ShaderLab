@@ -20,7 +20,7 @@ show. Opaque exports hide it completely.
 
 | Path (after `npm run ship`) | What |
 |---|---|
-| `Portfolio/public/work/shaders/card-<id>.webp` | The background image, 1226×816, about 160–200 KB. `<id>` is the project id from `src/data/projects.ts`. |
+| `Portfolio/public/work/shaders/card-<id>.webp` | The background image, 1226×816, about 160–200 KB. `<id>` is the background's id from `backgrounds.json`, chosen per card. |
 | `Portfolio/public/shaders/<id>.json` | The ShaderLab preset the image was rendered from. Not needed at runtime; keep it so the card can be re-rendered or animated later. |
 | `Portfolio/public/shaders/backgrounds.json` | Manifest: every background, its file, its project, and the average colour to use as the card's `shadowColor`. |
 | `ShaderLab/handoff/ShaderBackground.tsx` | A component that renders one background into the art layer. Copy it into `Portfolio/src/components/`. |
@@ -71,14 +71,13 @@ background, which is how the existing values were made.
 
 ## Ids
 
-| id | project |
-|---|---|
-| `wildflower` | Wildflower |
-| `human-in-the-loop` | Human In the Loop |
-| `dash` | Dash |
-| `dropbox-meetings` | Dropbox meetings |
-| `paper` | Paper |
-| `showreel` | Showreel |
+Backgrounds are a library, not one per project. Any card can import any
+background; pick by id. `backgrounds.json` is the current list and is
+regenerated on every Export all, so read it rather than this table. The
+starting library has six entries named after the projects they were first
+tuned for (`wildflower`, `human-in-the-loop`, `dash`, `dropbox-meetings`,
+`paper`, `showreel`), but nothing ties a background to a project: the
+`ShaderBackground` `id` prop is the background's id, and the card decides.
 
 ## Regenerating
 

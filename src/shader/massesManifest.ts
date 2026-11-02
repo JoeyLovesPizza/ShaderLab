@@ -27,13 +27,26 @@ export const UNIFORMS = {
   u_massParams: { kind: 'array', components: 4, count: MAX_MASSES, default: zeros(4 * MAX_MASSES) },
   u_massOpacity: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
   // Depth stack, in order. An amount below zero means the layer is off.
+  // Light: the card's height (0..1, or off), and the family's one light.
+  u_light: { kind: 'float', default: -1 },
+  u_lightAngle: { kind: 'float', default: 20 },
+  u_lightElevation: { kind: 'float', default: 35 },
+  u_lightAmount: { kind: 'float', default: 0.2 },
   u_curve: { kind: 'float', default: -1 },
   u_parallax: { kind: 'float', default: -1 },
   u_haze: { kind: 'float', default: -1 },
   u_swirl: { kind: 'float', default: -1 },
+  /** The swirl's warp wavelength, card widths. */
+  u_swirlScale: { kind: 'float', default: 0.6 },
   u_relief: { kind: 'float', default: -1 },
   u_reliefFreq: { kind: 'float', default: 85 },
   u_reliefTwist: { kind: 'float', default: 6 },
+  // Strokes: ±lightness amount (or off), direction in degrees, fibre
+  // length in card widths, fibres across the card's height.
+  u_strokes: { kind: 'float', default: -1 },
+  u_strokesAngle: { kind: 'float', default: 20 },
+  u_strokesLength: { kind: 'float', default: 0.4 },
+  u_strokesDensity: { kind: 'float', default: 80 },
   u_shadow: { kind: 'float', default: -1 },
   u_shadowRect: { kind: 'vec4', default: [0.08, 0.1, 0.84, 0.8] },
   u_shadowOffset: { kind: 'float', default: 0.03 },

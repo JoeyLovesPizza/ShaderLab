@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { getFamily } from './family'
-import { PRESETS } from './presets'
+import { PRESETS, blankPreset } from './presets'
 import type { CardDraft, Preset } from './types'
 
 /*
@@ -26,6 +26,9 @@ try {
   if (stored < current) {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(DIRTY_KEY)
+    // The library's own cards (library.ts) were written against the old
+    // schema too.
+    localStorage.removeItem('shaderlab:library')
     for (const key of Object.keys(localStorage)) if (key.startsWith('dialkit:')) localStorage.removeItem(key)
     localStorage.setItem(VERSION_KEY, String(current))
   }
@@ -152,14 +155,69 @@ export function clearDirty(id: string) {
   notify()
 }
 
+// One listener that throws (a panel asked about a card that has just been
+// renamed away) must not stop the rest from hearing, or the page goes
+// stale around it.
 const notify = () => {
-  for (const l of listeners) l()
+  for (const l of listeners) {
+    try {
+      l()
+    } catch (err) {
+      console.error('[ShaderLab] card listener failed', err)
+    }
+  }
 }
 
 export function getDraft(id: string): CardDraft {
   const draft = drafts.get(id)
   if (!draft) throw new Error(`No card draft for "${id}"`)
   return draft
+}
+
+export const hasCard = (id: string) => drafts.has(id)
+
+/** A card the library added (new, duplicated, or a renamed file): its
+    preset is the baseline, and any stored overlay goes over it. */
+export function ensureCard(preset: Preset) {
+  if (baselines.has(preset.id)) return
+  baselines.set(preset.id, draftOf(preset))
+  if (!drafts.has(preset.id)) drafts.set(preset.id, draftOf(preset))
+  notify()
+}
+
+/** A rename: the draft, baseline and dirty marks follow the card to its new id. */
+export function moveCard(from: string, to: string, preset: Preset) {
+  const draft = drafts.get(from)
+  const base = baselines.get(from)
+  const marks = dirty.get(from)
+  drafts.delete(from)
+  baselines.delete(from)
+  dirty.delete(from)
+  drafts.set(to, draft ?? draftOf(preset))
+  baselines.set(to, base ?? draftOf(preset))
+  if (marks) dirty.set(to, marks)
+  persist()
+  notify()
+}
+
+/** The file changed on disk (saved here, or edited by hand): it is the
+    baseline again, and a card with no edits of its own follows it. */
+export function reloadFile(preset: Preset) {
+  const base = draftOf(preset)
+  const old = baselines.get(preset.id)
+  const draft = drafts.get(preset.id)
+  baselines.set(preset.id, base)
+  if (!old || !draft || same(draft, old)) drafts.set(preset.id, draftOf(preset))
+  persist()
+  notify()
+}
+
+export function dropCard(id: string) {
+  drafts.delete(id)
+  baselines.delete(id)
+  dirty.delete(id)
+  persist()
+  notify()
 }
 
 export function setDraft(id: string, draft: CardDraft) {
@@ -200,8 +258,13 @@ export function subscribeCards(listener: () => void) {
   }
 }
 
+/** What a cell shows for an id the store no longer has: a card renamed or
+    deleted under it, in the render before it unmounts. A snapshot must
+    never throw, or the boundary eats the cell. */
+const ORPHAN: CardDraft = draftOf(blankPreset('orphan', 'orphan'))
+
 export function useDraft(id: string): CardDraft {
-  return useSyncExternalStore(subscribeCards, () => getDraft(id))
+  return useSyncExternalStore(subscribeCards, () => drafts.get(id) ?? ORPHAN)
 }
 
 export function useModified(id: string): boolean {

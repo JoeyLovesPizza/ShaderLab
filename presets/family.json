@@ -24,6 +24,14 @@
       ],
       "on": true
     },
+    "light": {
+      "allowed": true,
+      "amount": [
+        0.3,
+        0.7
+      ],
+      "on": true
+    },
     "parallax": {
       "allowed": true,
       "amount": [
@@ -50,13 +58,24 @@
       ],
       "on": false
     },
+    "strokes": {
+      "allowed": true,
+      "amount": [
+        0.03,
+        0.08
+      ],
+      "density": 80,
+      "length": 0.4,
+      "on": false
+    },
     "swirl": {
       "allowed": true,
       "amount": [
         0.2,
         0.4
       ],
-      "on": false
+      "on": false,
+      "scale": 0.6
     }
   },
   "finish": {
@@ -82,6 +101,12 @@
         0.2
       ]
     }
+  },
+  "light": {
+    "amount": 0.2,
+    "angle": 20,
+    "elevation": 35,
+    "followAngle": true
   },
   "masses": {
     "boldAllowed": true,
@@ -110,8 +135,8 @@
   },
   "meta": {
     "created": "2026-10-28",
-    "name": "masses@1 family (Critic defaults, SPEC.md §4, 2026-10-28)",
-    "version": 2
+    "name": "masses@1 family (Critic defaults, SPEC.md §4, 2026-10-28; Light and Strokes 2026-11-02)",
+    "version": 3
   },
   "motion": {
     "amount": 0.6,
