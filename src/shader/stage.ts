@@ -40,6 +40,9 @@ export interface LiveOptions {
   fpsCap?: number
   /** After each draw, with the time drawn. For auras and the like. */
   onDraw?: (time: number) => void
+  /** A draw threw (a shader that won't compile): the target has been
+      stopped, and this says why. */
+  onError?: (message: string) => void
 }
 
 interface LiveEntry {
@@ -50,6 +53,7 @@ interface LiveEntry {
   fpsCap: number
   lastDraw: number
   onDraw?: (time: number) => void
+  onError?: (message: string) => void
 }
 
 export interface StageStats {
@@ -66,6 +70,11 @@ const wrap = (t: number, loop: number) => ((t % loop) + loop) % loop
 
 class Stage {
   private renderer: Renderer | null = null
+  /** The one canvas the renderer lives on; kept across rebuilds since a
+      canvas has one context for life. */
+  private canvas: HTMLCanvasElement | null = null
+  /** Set between webglcontextlost and webglcontextrestored: nothing draws. */
+  private lost = false
   private live = new Map<HTMLCanvasElement, LiveEntry>()
   private raf: number | null = null
   private lastTick: number | null = null
@@ -76,18 +85,53 @@ class Stage {
   private versionListeners = new Set<() => void>()
 
   constructor() {
-    onShaderSource(() => {
-      this.renderer?.dispose()
-      this.renderer = null
-      this.version += 1
-      for (const l of this.versionListeners) l()
-      for (const target of this.live.keys()) this.redraw(target)
-    })
+    onShaderSource(() => this.rebuild())
+  }
+
+  /** Drop the renderer and have every poster and live target drawn again. */
+  private rebuild() {
+    this.renderer?.dispose()
+    this.renderer = null
+    this.version += 1
+    for (const l of this.versionListeners) l()
+    for (const target of this.live.keys()) this.redraw(target)
   }
 
   private ensure(): Renderer {
-    if (!this.renderer) this.renderer = createRenderer(document.createElement('canvas'))
+    if (this.lost) throw new Error('WebGL context lost; waiting for the browser to restore it')
+    if (!this.canvas) {
+      this.canvas = document.createElement('canvas')
+      // A lost context (GPU reset, too many contexts, a sleeping laptop)
+      // would otherwise leave dead programs behind: every draw from then
+      // on fails. preventDefault asks the browser to restore it; the
+      // rebuild then compiles afresh on the same context.
+      this.canvas.addEventListener('webglcontextlost', (e) => {
+        e.preventDefault()
+        this.lost = true
+        this.renderer = null
+        console.warn('[ShaderLab] WebGL context lost; waiting for restore')
+      })
+      this.canvas.addEventListener('webglcontextrestored', () => {
+        this.lost = false
+        console.warn('[ShaderLab] WebGL context restored; rebuilding')
+        this.rebuild()
+      })
+    }
+    if (!this.renderer) this.renderer = createRenderer(this.canvas)
     return this.renderer
+  }
+
+  /** One live target's draw, with its failure kept to that target. */
+  private drawLive(target: HTMLCanvasElement, e: LiveEntry, state: CardState, time: number) {
+    try {
+      this.renderInto(target, state, time, e.dpr())
+      e.onDraw?.(time)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      this.stop(target)
+      if (e.onError) e.onError(message)
+      else console.error('[ShaderLab] live draw failed', err)
+    }
   }
 
   getVersion() {
@@ -158,6 +202,7 @@ class Stage {
       fpsCap: options.fpsCap ?? 60,
       lastDraw: 0,
       onDraw: options.onDraw,
+      onError: options.onError,
     })
     // A frame straight away, so a paused target isn't left blank.
     this.redraw(target)
@@ -205,15 +250,14 @@ class Stage {
   redraw(target: HTMLCanvasElement) {
     const e = this.live.get(target)
     if (!e || !target.isConnected) return
-    this.renderInto(target, e.state(), e.time, e.dpr())
-    e.onDraw?.(e.time)
+    this.drawLive(target, e, e.state(), e.time)
   }
 
   /** Draw a live target at an exact time without moving its playhead. */
   renderAt(target: HTMLCanvasElement, time: number) {
     const e = this.live.get(target)
     if (!e || !target.isConnected) return
-    this.renderInto(target, e.state(), time, e.dpr())
+    this.drawLive(target, e, e.state(), time)
   }
 
   onStats(listener: (stats: StageStats) => void) {
@@ -237,8 +281,7 @@ class Stage {
       if (now - e.lastDraw < 1000 / e.fpsCap - 1.5) continue
       if (!target.isConnected) continue
       e.lastDraw = now
-      this.renderInto(target, state, e.time, e.dpr())
-      e.onDraw?.(e.time)
+      this.drawLive(target, e, state, e.time)
     }
 
     const s = this.stats

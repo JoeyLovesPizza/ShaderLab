@@ -66,13 +66,23 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
 
   const amount = (layer: { on: boolean; amount: number }) => (layer.on ? layer.amount : -1)
   const d = draft.depth
+  // The one light is the family's; a card only says how tall its field is.
+  u.u_light = d.light.on ? d.light.height : -1
+  u.u_lightAngle = family.light.followAngle ? family.motion.angle : family.light.angle
+  u.u_lightElevation = family.light.elevation
+  u.u_lightAmount = family.light.amount
   u.u_curve = amount(d.curve)
   u.u_parallax = amount(d.parallax)
   u.u_haze = amount(d.haze)
   u.u_swirl = amount(d.swirl)
+  u.u_swirlScale = d.swirl.scale
   u.u_relief = amount(d.relief)
   u.u_reliefFreq = d.relief.frequency
   u.u_reliefTwist = d.relief.twist
+  u.u_strokes = amount(d.strokes)
+  u.u_strokesAngle = d.strokes.followAngle ? family.motion.angle : d.strokes.direction
+  u.u_strokesLength = d.strokes.length
+  u.u_strokesDensity = d.strokes.density
   u.u_shadow = amount(d.shadow)
   u.u_shadowRect = [...d.shadow.rect]
   u.u_shadowOffset = d.shadow.offset

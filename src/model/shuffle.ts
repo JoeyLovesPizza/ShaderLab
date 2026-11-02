@@ -55,6 +55,19 @@ type Rnd = () => number
 const between = (rnd: Rnd, [min, max]: Range) => min + (max - min) * rnd()
 const intBetween = (rnd: Rnd, [min, max]: Range) => Math.floor(min + (max - min + 1) * rnd())
 const jitter = (rnd: Rnd, centre: number, by: number) => centre + (rnd() * 2 - 1) * by
+
+/*
+ * Rolled numbers at the precision the file and the panel hold them: four
+ * places as the preset writer rounds, one for a hue, and two for a
+ * position, the pad's step. Otherwise a roll, its file and the panel's
+ * reading of it are three different drafts, and the gaps show as
+ * "modified" and "by hand". Locked values are never rolled, so never
+ * rounded.
+ */
+const r4 = (n: number) => Number(n.toFixed(4))
+const r2 = (n: number) => Number(n.toFixed(2))
+const r1 = (n: number) => Number(n.toFixed(1))
+const floor4 = (n: number) => Math.floor(n * 1e4) / 1e4
 const wrapHue = (h: number) => ((h % 360) + 360) % 360
 const pick = <T>(rnd: Rnd, options: readonly T[]): T => options[Math.floor(rnd() * options.length)]
 
@@ -126,7 +139,7 @@ const GOVERNS: Record<RollScope, RegExp> = {
   all: /.*/,
   colour: /^(base\.(hue|chroma)|masses\.\d+\.(hue|chroma))$/,
   coverage: /^masses\.\d+\.(size|softness)$/,
-  structure: /^depth\.(swirl|relief)\.(on|amount)$/,
+  structure: /^depth\.(swirl|relief|strokes)\.(on|amount)$/,
 }
 
 const MASS_FIELDS = ['hue', 'value', 'chroma', 'x', 'y', 'size', 'softness', 'distance'] as const
@@ -231,18 +244,22 @@ export function shuffle(
     next.base.hue = wrapHue(jitter(rnd, origin.base.hue, HUE_JITTER * (0.5 + variety)))
     next.base.value = vary(rnd, origin.base.value, family.base.value, variety)
     next.base.chroma = Math.min(vary(rnd, origin.base.chroma, [0, family.base.chromaMax], variety), family.base.chromaMax)
+    next.base.hue = r1(next.base.hue)
+    next.base.value = r4(next.base.value)
+    next.base.chroma = r4(next.base.chroma)
   }
   const baseL = next.base.value
 
-  // Mass count by coverage, never dropping a locked mass.
-  const locked = draft.masses.filter((m) => m.locked).length
+  // Mass count by coverage, never dropping a locked mass: the count reaches
+  // past the last locked one, whatever its slot.
+  const lastLocked = draft.masses.reduce((last, m, i) => (m.locked ? i + 1 : last), 0)
   const countRange: Range =
     coverage === 'blend'
       ? [Math.max(2, family.masses.count[0]), Math.min(3, family.masses.count[1])]
       : coverage === 'block'
         ? [1, 2]
         : [1, 1]
-  const count = Math.max(locked, intBetween(rnd, countRange))
+  const count = Math.max(lastLocked, intBetween(rnd, countRange))
 
   const massHues = hues(rnd, colour, next.base.hue, origin.masses.map((m) => m.hue), count)
   const boldIndex = bold ? Math.floor(rnd() * count) : -1
@@ -287,14 +304,14 @@ export function shuffle(
     }
 
     masses.push({
-      hue: massHues[i],
-      value: clampTo(jitter(rnd, valueCentre, VALUE_JITTER * (1 + 2 * variety)), [L_MIN, L_MAX]),
-      chroma: clampTo(vary(rnd, chromaCentre, [0, cap], variety), [0, cap]),
-      x,
-      y,
-      size,
-      softness,
-      distance: clampTo(jitter(rnd, from?.distance ?? 0.5, 0.2), [0, 1]),
+      hue: r1(massHues[i]),
+      value: r4(clampTo(jitter(rnd, valueCentre, VALUE_JITTER * (1 + 2 * variety)), [L_MIN, L_MAX])),
+      chroma: r4(clampTo(vary(rnd, chromaCentre, [0, cap], variety), [0, cap])),
+      x: r2(x),
+      y: r2(y),
+      size: r4(size),
+      softness: r4(softness),
+      distance: r4(clampTo(jitter(rnd, from?.distance ?? 0.5, 0.2), [0, 1])),
       locked: false,
     })
   }
@@ -305,7 +322,8 @@ export function shuffle(
     const i = masses.findIndex((m) => !m.locked)
     if (i >= 0) {
       const m = masses[i]
-      if (baseL - DARK_BELOW_BASE >= L_MIN) m.value = clampTo(baseL - DARK_BELOW_BASE - 0.1 * rnd(), [L_MIN, L_MAX])
+      // Rounded down, so the rounded value still sits under the line.
+      if (baseL - DARK_BELOW_BASE >= L_MIN) m.value = floor4(clampTo(baseL - DARK_BELOW_BASE - 0.1 * rnd(), [L_MIN, L_MAX]))
       else m.chroma = Math.min(m.chroma, LOW_CHROMA * 0.6)
     }
   }
@@ -323,13 +341,20 @@ export function shuffle(
   // structure layer is the one rolled, the others off.
   for (const layer of DEPTH_ORDER) {
     const rule = family.depth[layer]
-    if (layer === 'swirl' || layer === 'relief') {
+    if (layer === 'swirl' || layer === 'relief' || layer === 'strokes') {
       next.depth[layer].on = structure === layer
       next.depth[layer].amount = between(rnd, rule.amount)
       continue
     }
     if (layer === 'shadow') continue
-    next.depth[layer].on = rule.allowed ? rnd() < (rule.on ? 0.85 : 0.3) : rule.on
+    const on = rule.allowed ? rnd() < (rule.on ? 0.85 : 0.3) : rule.on
+    if (layer === 'light') {
+      // The light's amount range is its height range.
+      next.depth.light.on = on
+      next.depth.light.height = r4(vary(rnd, draft.depth.light.height, rule.amount, variety))
+      continue
+    }
+    next.depth[layer].on = on
     next.depth[layer].amount = vary(rnd, draft.depth[layer].amount, rule.amount, variety)
   }
 
@@ -344,6 +369,13 @@ export function shuffle(
   next.finish.layerBlur.on = fl.allowed && rnd() < 0.2
   next.finish.layerBlur.radius = between(rnd, fl.radius)
   next.finish.layerBlur.intensity = between(rnd, fl.intensity)
+
+  next.texture.grain = r4(next.texture.grain)
+  for (const layer of DEPTH_ORDER) if (layer !== 'light') next.depth[layer].amount = r4(next.depth[layer].amount)
+  next.finish.motionBlur.length = r4(next.finish.motionBlur.length)
+  next.finish.motionBlur.intensity = r4(next.finish.motionBlur.intensity)
+  next.finish.layerBlur.radius = r4(next.finish.layerBlur.radius)
+  next.finish.layerBlur.intensity = r4(next.finish.layerBlur.intensity)
 
   return next
 }

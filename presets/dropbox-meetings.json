@@ -20,6 +20,10 @@
       "amount": 0.25,
       "on": true
     },
+    "light": {
+      "height": 0.5,
+      "on": true
+    },
     "parallax": {
       "amount": 0.6,
       "on": true
@@ -42,9 +46,18 @@
       ],
       "spread": 0.1
     },
+    "strokes": {
+      "amount": 0.05,
+      "density": 80,
+      "direction": 20,
+      "followAngle": true,
+      "length": 0.4,
+      "on": false
+    },
     "swirl": {
       "amount": 0.3,
-      "on": false
+      "on": false,
+      "scale": 0.6
     }
   },
   "id": "dropbox-meetings",

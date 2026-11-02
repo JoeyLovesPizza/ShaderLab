@@ -1,0 +1,151 @@
+{
+  "base": {
+    "chroma": 0.1,
+    "hue": 70,
+    "locked": false,
+    "value": 0.85
+  },
+  "canvas": {
+    "dpr": 2,
+    "height": 408,
+    "width": 613
+  },
+  "captionMask": false,
+  "depth": {
+    "curve": {
+      "amount": 0.3,
+      "on": true
+    },
+    "haze": {
+      "amount": 0.15,
+      "on": false
+    },
+    "light": {
+      "height": 0.5,
+      "on": false
+    },
+    "parallax": {
+      "amount": 0.5,
+      "on": true
+    },
+    "relief": {
+      "amount": 0.2,
+      "frequency": 85,
+      "on": false,
+      "twist": 6
+    },
+    "shadow": {
+      "amount": 0.5,
+      "offset": 0.03,
+      "on": false,
+      "rect": [
+        0.08,
+        0.1,
+        0.84,
+        0.8
+      ],
+      "spread": 0.1
+    },
+    "strokes": {
+      "amount": 0.05,
+      "density": 80,
+      "direction": 20,
+      "followAngle": true,
+      "length": 0.4,
+      "on": false
+    },
+    "swirl": {
+      "amount": 0.6,
+      "on": true,
+      "scale": 1.6
+    }
+  },
+  "finish": {
+    "layerBlur": {
+      "intensity": 0.6,
+      "on": false,
+      "radius": 0.04
+    },
+    "motionBlur": {
+      "angle": 20,
+      "followAngle": true,
+      "intensity": 0.6,
+      "length": 0.1,
+      "on": false
+    }
+  },
+  "id": "silk-fold",
+  "image": null,
+  "loop": {
+    "fps": 30,
+    "seconds": 12,
+    "stillTime": 6
+  },
+  "masses": [
+    {
+      "chroma": 0.2,
+      "distance": 0.4,
+      "hue": 30,
+      "locked": false,
+      "size": 0.3,
+      "softness": 0.45,
+      "value": 0.58,
+      "x": 0.55,
+      "y": 0.5
+    },
+    {
+      "chroma": 0.12,
+      "distance": 0.7,
+      "hue": 285,
+      "locked": false,
+      "size": 0.5,
+      "softness": 0.7,
+      "value": 0.3,
+      "x": 1.25,
+      "y": -0.1
+    }
+  ],
+  "meta": {
+    "created": "2026-11-02",
+    "name": "Silk fold"
+  },
+  "modes": {
+    "bold": true,
+    "colour": "free",
+    "coverage": "blend",
+    "structure": "swirl"
+  },
+  "schema": 2,
+  "seed": 1102,
+  "shader": "masses@1",
+  "states": {
+    "active": {
+      "transition": {
+        "duration": 0.6,
+        "durationOut": 0.9,
+        "ease": "inOut"
+      },
+      "uniforms": {
+        "u_contrast": 0.9,
+        "u_exposure": 0.15
+      }
+    },
+    "hover": {
+      "transition": {
+        "duration": 0.3,
+        "durationOut": 0.45,
+        "ease": "out"
+      },
+      "uniforms": {
+        "u_exposure": 0.08
+      }
+    },
+    "idle": {
+      "loop": true,
+      "uniforms": {}
+    }
+  },
+  "texture": {
+    "grain": 0.08
+  }
+}

@@ -4,16 +4,15 @@ import { CardBoundary } from './CardBoundary'
 import { Cell, type CellFocus } from './Cell'
 
 /*
- * Browse (SPEC.md §6): the grid of every preset, or the rail of the six
- * carousel cards at card scale with their auras on #fafafa, where the
- * family is judged. Both are the same Cells; the one that is focused keeps
- * its place here and flies out of it.
+ * Browse (SPEC.md §6): the library as a grid of thumbnails, or as a rail
+ * of cards at card scale with their auras on #fafafa, where the family is
+ * judged. Both show every card in file order; the one that is focused
+ * keeps its place here and flies out of it.
  */
 
 interface BrowseProps {
   view: BrowseView
   presets: Preset[]
-  railPresets: Preset[]
   reduced: boolean
   focusedId: string | null
   focus: CellFocus
@@ -21,11 +20,10 @@ interface BrowseProps {
   onHover: (presetId: string | null) => void
 }
 
-export function Browse({ view, presets, railPresets, reduced, focusedId, focus, onSelect, onHover }: BrowseProps) {
-  const list = view === 'rail' ? railPresets : presets
+export function Browse({ view, presets, reduced, focusedId, focus, onSelect, onHover }: BrowseProps) {
   return (
     <section className={view === 'rail' ? 'rail' : 'grid'} aria-label={view === 'rail' ? 'Rail' : 'Grid'}>
-      {list.map((preset) => (
+      {presets.map((preset) => (
         <CardBoundary key={preset.id} label={preset.meta.name}>
           <Cell
             preset={preset}

@@ -4,10 +4,11 @@
  *
  *   FIELD   base + masses composited in OKLab (mixing toward each mass by
  *           its falloff × opacity, darkest first), the depth stack in order
- *           (Curve, Parallax, Haze, Swirl, Relief, Grid, Shadow), the
- *           caption mask, and the alpha: base alpha where nothing covers,
- *           rising to 1 with coverage. Written to a texture as encoded
- *           OKLab + alpha.
+ *           (Swirl warps the space; Curve bows it; Parallax; the masses,
+ *           Curve, Relief and Strokes make a height field that Light
+ *           shades; Haze; Strokes as paint; Shadow), the caption mask,
+ *           and the alpha: base alpha where nothing covers, rising to 1
+ *           with coverage. Written to a texture as encoded OKLab + alpha.
  *   BLUR    the Finish stage: motion blur (taps along an angle, per-pixel
  *           jittered so banding hides under the grain) or one direction of
  *           a separable Gaussian, each mixed with the unblurred field by
@@ -60,13 +61,22 @@ uniform vec2  u_massPos[4];    // card units: x 0..aspect, y 0..1, y up
 uniform vec4  u_massParams[4]; // size (height units), softness, distance, phase offset
 uniform float u_massOpacity[4];
 
+uniform float u_light;         // the card's height, 0..1; below zero means off
+uniform float u_lightAngle;    // degrees, the light's direction in the plane
+uniform float u_lightElevation;// degrees above the surface
+uniform float u_lightAmount;   // how far the shade moves L
 uniform float u_curve;         // depth amounts; below zero means off
 uniform float u_parallax;
 uniform float u_haze;
 uniform float u_swirl;
+uniform float u_swirlScale;    // warp wavelength, card widths (0.6 marbling, 1.2 one fold)
 uniform float u_relief;
 uniform float u_reliefFreq;    // cycles per card width
 uniform float u_reliefTwist;   // degrees
+uniform float u_strokes;       // ±L amount; below zero means off
+uniform float u_strokesAngle;  // degrees
+uniform float u_strokesLength; // card widths
+uniform float u_strokesDensity;// fibres across the card's height
 uniform float u_shadow;
 uniform vec4  u_shadowRect;    // x, y, w, h as fractions of the card, y from the bottom
 uniform float u_shadowOffset;
@@ -153,14 +163,16 @@ vec2 rotate(vec2 v, float a) {
 }
 
 // Swirl: two octaves of low-frequency noise on the loop's circle, as a
-// vector field the mass coordinates are dragged along.
-vec2 swirlOffset(vec2 p, vec2 loop) {
-  float a = snoise(vec4(p * 1.1, loop)) + 0.5 * snoise(vec4(p * 2.2 + 7.0, loop * 1.5));
-  float b = snoise(vec4(p * 1.1 + 31.0, loop)) + 0.5 * snoise(vec4(p * 2.2 + 53.0, loop * 1.5));
+// vector field the mass coordinates are dragged along. k sets the
+// wavelength: 1.1 is the marbling; smaller, one slow fold.
+vec2 swirlOffset(vec2 p, vec2 loop, float k) {
+  float a = snoise(vec4(p * k, loop)) + 0.5 * snoise(vec4(p * k * 2.0 + 7.0, loop * 1.5));
+  float b = snoise(vec4(p * k + 31.0, loop)) + 0.5 * snoise(vec4(p * k * 2.0 + 53.0, loop * 1.5));
   return vec2(a, b) / 1.5;
 }
 
-// Relief: two wavefronts a few degrees apart; their beat is the pleats.
+// Relief: two wavefronts a few degrees apart; their beat is the pleats,
+// which ridge the height field (the Light layer shades them).
 float pleat(vec2 p, float phase, float aspect) {
   float k = u_reliefFreq * TAU / aspect;
   float a0 = radians(u_angle);
@@ -169,12 +181,24 @@ float pleat(vec2 p, float phase, float aspect) {
   return sin(dot(p, d1) * k + phase) * sin(dot(p, d2) * k * 1.07 - phase);
 }
 
-vec3 pleatNormal(vec2 p, float phase, float aspect) {
+vec2 pleatGrad(vec2 p, float phase, float aspect) {
   float eps = 0.001;
-  float height = 0.6 * aspect / max(u_reliefFreq * TAU, 1.0);
   float dx = (pleat(p + vec2(eps, 0.0), phase, aspect) - pleat(p - vec2(eps, 0.0), phase, aspect)) / (2.0 * eps);
   float dy = (pleat(p + vec2(0.0, eps), phase, aspect) - pleat(p - vec2(0.0, eps), phase, aspect)) / (2.0 * eps);
-  return normalize(vec3(-dx * height, -dy * height, 1.0));
+  return vec2(dx, dy);
+}
+
+// Strokes ("painted grass"): fine noise stretched hard along one
+// direction, the way a dry brush or a long exposure draws fibres. The
+// warp is a low-frequency wave, sampled once and shared by the taps that
+// take the gradient, so the fibres undulate together.
+float strokeFibres(float along, float across, float aspect) {
+  float density = u_strokesDensity;
+  // ~40:1 at the default length; longer fibres stretch it further.
+  float alongK = density / 40.0 * 0.4 / max(u_strokesLength, 0.05);
+  float n = snoise(vec4(along * alongK, across * density, 3.0, 9.0))
+          + 0.5 * snoise(vec4(along * alongK * 2.3, across * density * 2.3, 7.0, 13.0));
+  return n / 1.5;
 }
 
 float roundedBox(vec2 q, vec2 halfSize, float r) {
@@ -192,32 +216,40 @@ void main() {
   vec2 q = p;
   // Its noise samples the same loop circle, with a radius that grows with
   // the drift, so the marbling moves with the masses rather than hanging.
+  // The scale sets the wavelength, and the drag grows with it: a long
+  // slow wave at the marbling's amplitude would be no fold at all.
   if (u_swirl >= 0.0) {
     vec2 loop = circle * (0.3 + 3.0 * u_driftRadius) + 3.0;
-    q += swirlOffset(p, loop) * u_swirl * 0.6;
+    float scale = max(u_swirlScale, 0.1);
+    q += swirlOffset(p, loop, 0.66 / scale) * u_swirl * scale;
   }
 
   // Curve: a gently bowed sheet. The metric stretches toward the edges, so
-  // a mass's falloff tightens there, and the sheet turns away from it.
+  // a mass's falloff tightens there. The sheet's fall-away is in the
+  // height field now, where the Light shades it; the old darkening of the
+  // edges fades out as the height rises, so a flat card still looks as
+  // it did and a tall one is lit instead of dimmed.
   vec2 fromCentre = q - vec2(aspect * 0.5, 0.5);
   float edge = dot(fromCentre, fromCentre);
   float curve = max(u_curve, 0.0);
   float bow = 1.0 + curve * edge * 1.2;
-  float tilt = 1.0 - curve * 0.35 * clamp(edge, 0.0, 1.0);
+  float height = clamp(u_light, 0.0, 1.0);
+  float tilt = 1.0 - curve * 0.35 * clamp(edge, 0.0, 1.0) * (1.0 - height);
 
-  vec3 n = u_relief >= 0.0 ? pleatNormal(q, phase, aspect) : vec3(0.0, 0.0, 1.0);
+  // The height field h: light masses rise, dark ones sink, Curve bows it,
+  // Relief and Strokes ridge it. Only its gradient is needed; the masses'
+  // comes from the falloff's own derivative, the ridges' from taps.
+  vec2 gradMass = -curve * 0.8 * 2.0 * fromCentre;   // the bow: a dome, highest at the centre
 
   vec3 lab = u_base;
   vec3 labLow = u_base;   // the field without the pleats, for the caption mask
   float uncovered = 1.0;  // what no mass has reached, for the alpha
   float nearestLight = 1e9;
   float nearestF = 0.0;
-  vec2 nearestDir = vec2(0.0, 1.0);
   // The nearest mass of any kind: on a light base no mass is "light", and
-  // the pleats still need something to be lit by.
+  // the pleats still need an edge to live on.
   float nearestAny = 1e9;
   float nearestAnyF = 0.0;
-  vec2 nearestAnyDir = vec2(0.0, 1.0);
 
   for (int i = 0; i < 4; i++) {
     if (i >= u_massCount) break;
@@ -233,12 +265,21 @@ void main() {
     // quarter of its size, then falls off with an exponent the softness
     // shapes (0.4 is a firm block, 0.9 a long tail).
     float k = mix(4.0, 1.6, clamp((prm.y - 0.4) / 0.5, 0.0, 1.0));
-    float f = exp(-0.5 * pow(max(dist - 0.25 * prm.x, 0.0) / prm.x, k)) * tilt * u_massOpacity[i];
+    float u = max(dist - 0.25 * prm.x, 0.0) / prm.x;
+    float f0 = exp(-0.5 * pow(u, k)) * u_massOpacity[i];
+    float f = f0 * tilt;
 
     vec3 M = u_massLab[i];
     M.x += u_exposure;
     M.yz *= u_contrast;
     bool light = M.x > u_base.x;
+
+    // The falloff's derivative, analytic: zero on the plateau, then the
+    // slope of the exponential, pointing away from the centre.
+    if (u > 0.0 && dist > 1e-5) {
+      float dfdd = f0 * (-0.5 * k * pow(u, k - 1.0) / prm.x) * bow;
+      gradMass += (light ? 1.0 : -1.0) * dfdd * (d / dist);
+    }
 
     // Composite by mixing toward the mass, in order: a dark mass over a
     // light one reads as shadow, not as a brighter blob.
@@ -249,13 +290,56 @@ void main() {
     if (light && dist / prm.x < nearestLight) {
       nearestLight = dist / prm.x;
       nearestF = f;
-      nearestDir = normalize(c - q);
     }
     if (dist / prm.x < nearestAny) {
       nearestAny = dist / prm.x;
       nearestAnyF = f;
-      nearestAnyDir = normalize(c - q);
     }
+  }
+
+  // Strokes: the fibres, along their direction, warped by a slow wave.
+  float fibres = 0.0;
+  vec2 gradStrokes = vec2(0.0);
+  if (u_strokes >= 0.0) {
+    float sa = radians(u_strokesAngle);
+    vec2 dir = vec2(cos(sa), sin(sa));
+    vec2 perp = vec2(-dir.y, dir.x);
+    // Two warps: a slow wave so the fibres undulate, and a finer one so
+    // they do not undulate in unison (which reads as corduroy).
+    float along = dot(q, dir) + 0.2 * snoise(vec4(q * 0.8, 23.0, 5.0));
+    float across = dot(q, perp) + 0.05 * snoise(vec4(q * 1.5, 11.0, 17.0)) + 0.012 * snoise(vec4(q * 4.5, 41.0, 29.0));
+    // The ridge's slope is kept the same whatever the density.
+    float eps = 0.002;
+    float sPlus = strokeFibres(along, across + eps, aspect);
+    float sMinus = strokeFibres(along, across - eps, aspect);
+    fibres = strokeFibres(along, across, aspect);
+    float ridge = 0.3 / max(u_strokesDensity, 1.0);
+    gradStrokes = perp * ((sPlus - sMinus) / (2.0 * eps)) * ridge * (u_strokes / 0.05);
+  }
+
+  // Relief: the pleats live at the edge of the nearest light mass, where
+  // 4f(1−f) peaks, and vanish in its core and in the flat (Polar). With no
+  // light mass (a light base), the nearest mass of any kind gives the edge.
+  vec2 gradRelief = vec2(0.0);
+  if (u_relief >= 0.0 && nearestAny < 1e8) {
+    float fEdge = nearestLight < 1e8 ? nearestF : nearestAnyF;
+    float edgeWeight = 4.0 * fEdge * (1.0 - fEdge);
+    float ridge = aspect / max(u_reliefFreq * TAU, 1.0);
+    gradRelief = pleatGrad(q, phase, aspect) * ridge * edgeWeight * u_relief * 2.5;
+  }
+
+  // Light: one directional light shades the field's normal, with a
+  // wrapped Lambert so the far side dims rather than blacks out. A flat
+  // surface shades to exactly nothing, so height 0 is the card as it was.
+  if (u_light >= 0.0) {
+    float H = height * 1.5;
+    float az = radians(u_lightAngle), el = radians(u_lightElevation);
+    vec3 L = vec3(cos(az) * cos(el), sin(az) * cos(el), sin(el));
+    float level = 0.5 + 0.5 * sin(el);   // what a flat surface shades to
+    vec3 n = normalize(vec3(-(gradMass + gradRelief + gradStrokes) * H, 1.0));
+    vec3 nLow = normalize(vec3(-gradMass * H, 1.0));
+    lab.x += (0.5 + 0.5 * dot(n, L) - level) * u_lightAmount;
+    labLow.x += (0.5 + 0.5 * dot(nLow, L) - level) * u_lightAmount;
   }
 
   // Haze: the side far from any light mass sinks toward the base.
@@ -265,16 +349,8 @@ void main() {
     labLow = mix(labLow, u_base, h);
   }
 
-  // Relief: the pleats live at the edge of the nearest light mass, where
-  // 4f(1−f) peaks, and vanish in its core and in the flat (Polar). With no
-  // light mass (a light base), the nearest mass of any kind lights them.
-  if (u_relief >= 0.0 && nearestAny < 1e8) {
-    bool haveLight = nearestLight < 1e8;
-    float fEdge = haveLight ? nearestF : nearestAnyF;
-    vec2 dir = haveLight ? nearestDir : nearestAnyDir;
-    float edgeWeight = 4.0 * fEdge * (1.0 - fEdge);
-    lab.x += dot(n.xy, dir) * edgeWeight * u_relief * 0.8;
-  }
+  // Strokes as paint: a little lighter and darker along the fibres.
+  if (u_strokes >= 0.0) lab.x += fibres * u_strokes;
 
   // Shadow: a pooled soft shadow where the UI layer will sit, offset down.
   if (u_shadow >= 0.0) {

@@ -3,12 +3,17 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 /*
  * Catches whatever a cell throws (a shader that won't compile, a draft the
  * packer can't read) and shows the message in the cell's place, so one bad
- * card never takes the page with it.
+ * card never takes the page with it. The panel uses it too, with a
+ * `fallback` of nothing and `onError` so the header can offer to reopen
+ * it: a thrown panel otherwise simply vanishes ("where did DialKit go").
+ * A new `key` on the boundary mounts the child afresh.
  */
 
 interface Props {
   label: string
   children: ReactNode
+  fallback?: (error: string) => ReactNode
+  onError?: (error: string) => void
 }
 
 interface State {
@@ -24,10 +29,12 @@ export class CardBoundary extends Component<Props, State> {
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
     console.error(`[ShaderLab] ${this.props.label} failed to render`, error, info.componentStack)
+    this.props.onError?.(error instanceof Error ? error.message : String(error))
   }
 
   render() {
     if (this.state.error) {
+      if (this.props.fallback) return this.props.fallback(this.state.error)
       return (
         <div className="cell-slot cell-slot--broken" role="alert">
           <strong>{this.props.label}</strong>

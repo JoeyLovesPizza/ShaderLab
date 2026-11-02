@@ -4,11 +4,12 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  height: 64px;
+  min-height: 64px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacer-16);
-  padding: 0 var(--spacer-24);
+  gap: 8px var(--spacer-16);
+  padding: 8px var(--spacer-24);
   background: var(--surface-page);
   font-size: var(--size-14);
   line-height: var(--line-height-16);
@@ -29,12 +30,25 @@
 /* Live numbers from the stage, written once a second. */
 .bar__stats {
   margin-left: auto;
-  /* Clear of the DialKit popover's column. */
-  margin-right: 340px;
   font-family: ui-monospace, Menlo, monospace;
   font-size: var(--size-12);
   color: var(--type-headline-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* The panel toggle: last in the bar, clear of the DialKit column, and
+   above it, so it is reachable at any width and even when DialKit's own
+   toggle is off-screen or gone. */
+.bar__panel {
+  position: relative;
+  z-index: 70;
+  margin-right: 340px;
+}
+
+@media (max-width: 900px) {
+  .bar__panel {
+    margin-right: 0;
+  }
 }
 
 .segmented {
@@ -247,6 +261,25 @@
   cursor: default;
 }
 
+.menu__items .menu__danger {
+  color: var(--safety-700);
+}
+
+/* Inline rename, in the header: the desktop app's pane swallows prompt(). */
+.rename {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.rename input {
+  width: 180px;
+  padding: 5px 10px;
+  border: 1px solid var(--grey-150);
+  border-radius: 9999px;
+  font: inherit;
+}
+
 .bar__notice {
   font-size: var(--size-12);
   color: var(--type-headline-secondary);
@@ -286,6 +319,14 @@
   margin: 0;
   white-space: pre-wrap;
   font-family: ui-monospace, Menlo, monospace;
+}
+
+/* Hosted build note. */
+.foot {
+  padding: var(--spacer-16) var(--spacer-24) var(--spacer-36);
+  font-size: var(--size-12);
+  line-height: var(--line-height-16);
+  color: var(--type-headline-secondary);
 }
 
 /* ---------- Focus ---------- */

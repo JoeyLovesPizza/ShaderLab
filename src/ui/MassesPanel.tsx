@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDialKitController, type DialConfig } from 'dialkit'
 import { animate } from 'motion'
-import { diffPaths, getDirty, getDraft, markDirty, revertToFile, setDraft, stableStringify, subscribeCards } from '../model/cards'
+import {
+  diffPaths,
+  getDirty,
+  getDraft,
+  hasCard,
+  markDirty,
+  revertToFile,
+  setDraft,
+  stableStringify,
+  subscribeCards,
+} from '../model/cards'
 import { saveCard } from '../export/save'
 import { getFamily, setFamily, useFamily } from '../model/family'
-import { presetById } from '../model/presets'
 import { rollScoped, type RollScope } from '../model/shuffle'
 import {
   COLOUR_MODES,
@@ -83,14 +92,16 @@ function massConfig(mass: Mass, _family: Family) {
   return {
     color: oklchToHex(mass.hue, mass.value, mass.chroma),
     value: VALUE_OFFSET,
+    // Bounds are the validator's (validate.ts): a narrower control would
+    // clamp a valid file's value on the way in and mark it modified.
     position: {
       type: 'pad' as const,
-      x: slider(mass.x, -0.5, 2, 0.01),
-      y: slider(mass.y, -0.6, 1.6, 0.01),
+      x: slider(mass.x, -1, 3, 0.01),
+      y: slider(mass.y, -1, 2, 0.01),
       labels: { x: 'Across', y: 'Up' },
     },
-    size: slider(mass.size, 0.1, 2, 0.01),
-    softness: slider(mass.softness, 0.4, 0.9, 0.01),
+    size: slider(mass.size, 0.05, 4, 0.01),
+    softness: slider(mass.softness, 0, 1, 0.01),
     distance: slider(mass.distance, 0, 1, 0.01),
     locked: mass.locked,
   }
@@ -99,7 +110,7 @@ function massConfig(mass: Mass, _family: Family) {
 /** A mass slot beyond the draft's count: parked, so adding one is a no-op. */
 const SPARE_MASS: Mass = { hue: 0, value: 0.5, chroma: 0, x: 1.2, y: 0.5, size: 0.6, softness: 0.7, distance: 0.8, locked: false }
 
-function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced: boolean): DialConfig {
+function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced: boolean, isStatic: boolean): DialConfig {
   const masses: Record<string, unknown> = { count: slider(draft.masses.length, 1, MAX_MASSES, 1) }
   MASS_KEYS.forEach((key, i) => {
     masses[key] = massConfig(draft.masses[i] ?? SPARE_MASS, family)
@@ -108,7 +119,7 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
   return {
     seed: slider(draft.seed, 0, 999999, 1),
     revertToFile: { type: 'action', label: 'Revert to file' },
-    saveToFile: { type: 'action', label: 'Save to file' },
+    saveToFile: { type: 'action', label: isStatic ? 'Download preset' : 'Save to file' },
     variety: slider(family.variety, 0, 1, 0.01),
     modes: {
       colour: select(COLOUR_MODES, draft.modes.colour),
@@ -122,17 +133,28 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
       locked: draft.base.locked,
     },
     masses,
-    texture: { grain: slider(draft.texture.grain, 0, 0.3, 0.005), animate: family.texture.animate },
+    texture: { grain: slider(draft.texture.grain, 0, 0.5, 0.005), animate: family.texture.animate },
     depth: {
+      // Light (SPEC.md §2): the card's height; the light itself is the
+      // family's, in its own folder below.
+      light: { on: d.light.on, height: slider(d.light.height, 0, 1, 0.01) },
       curve: { on: d.curve.on, amount: slider(d.curve.amount, 0, 1, 0.01) },
       parallax: { on: d.parallax.on, amount: slider(d.parallax.amount, 0, 1, 0.01) },
       haze: { on: d.haze.on, amount: slider(d.haze.amount, 0, 1, 0.01) },
-      swirl: { on: d.swirl.on, amount: slider(d.swirl.amount, 0, 1, 0.01) },
+      swirl: { on: d.swirl.on, amount: slider(d.swirl.amount, 0, 1, 0.01), scale: slider(d.swirl.scale, 0.1, 3, 0.05) },
       relief: {
         on: d.relief.on,
         amount: slider(d.relief.amount, 0, 1, 0.01),
-        frequency: slider(d.relief.frequency, 10, 200, 1),
-        twist: slider(d.relief.twist, -45, 45, 0.5),
+        frequency: slider(d.relief.frequency, 1, 400, 1),
+        twist: slider(d.relief.twist, -90, 90, 0.5),
+      },
+      strokes: {
+        on: d.strokes.on,
+        amount: slider(d.strokes.amount, 0, 0.2, 0.005),
+        direction: slider(d.strokes.direction, -180, 180, 1),
+        followFamilyAngle: d.strokes.followAngle,
+        length: slider(d.strokes.length, 0.05, 2, 0.01),
+        density: slider(d.strokes.density, 5, 400, 1),
       },
       shadow: {
         on: d.shadow.on,
@@ -141,8 +163,8 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
         rectY: slider(d.shadow.rect[1], 0, 1, 0.01),
         rectW: slider(d.shadow.rect[2], 0, 1, 0.01),
         rectH: slider(d.shadow.rect[3], 0, 1, 0.01),
-        offset: slider(d.shadow.offset, 0, 0.2, 0.005),
-        spread: slider(d.shadow.spread, 0, 0.5, 0.005),
+        offset: slider(d.shadow.offset, 0, 0.5, 0.005),
+        spread: slider(d.shadow.spread, 0, 1, 0.005),
       },
       captionMask: draft.captionMask,
     },
@@ -150,7 +172,7 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
     finish: {
       motionBlur: {
         on: draft.finish.motionBlur.on,
-        angle: slider(draft.finish.motionBlur.angle, -180, 180, 1),
+        angle: slider(draft.finish.motionBlur.angle, -360, 360, 1),
         followFamilyAngle: draft.finish.motionBlur.followAngle,
         length: slider(draft.finish.motionBlur.length, 0, 0.3, 0.005),
         intensity: slider(draft.finish.motionBlur.intensity, 0, 1, 0.01),
@@ -160,6 +182,13 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
         radius: slider(draft.finish.layerBlur.radius, 0, 0.15, 0.0025),
         intensity: slider(draft.finish.layerBlur.intensity, 0, 1, 0.01),
       },
+    },
+    // The family's one light (SPEC.md §2, Light), shared by every card.
+    light: {
+      angle: slider(family.light.angle, -180, 180, 1),
+      followFamilyAngle: family.light.followAngle,
+      elevation: slider(family.light.elevation, 5, 90, 1),
+      amount: slider(family.light.amount, 0, 0.5, 0.01),
     },
     motion: {
       // One knob for how much everything moves (family-wide).
@@ -173,70 +202,118 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
   } as DialConfig
 }
 
-/** The panel's values as a draft, over the current one. */
+const isValues = (v: unknown): v is Values => typeof v === 'object' && v !== null
+const folder = (v: Values, key: string): Values => (isValues(v[key]) ? v[key] : {})
+const num = (v: Values, key: string, fallback: number) => (typeof v[key] === 'number' ? v[key] : fallback)
+const bool = (v: Values, key: string, fallback: boolean) => (typeof v[key] === 'boolean' ? v[key] : fallback)
+
+/**
+ * The panel's values as a draft, over the current one. Any value the
+ * panel does not have (a folder DialKit has not registered yet, a key
+ * from an older config) falls back to the current draft's, so this can
+ * never throw and unmount the panel with it.
+ */
 function draftFromValues(v: Values, current: CardDraft): CardDraft {
-  const base = v.base as Values
-  const modes = v.modes as Values
-  const massesV = v.masses as Values
-  const count = massesV.count as number
-  const depth = v.depth as Values
-  const motion = v.motion as Values
-  const layer = (key: string) => depth[key] as Values
+  const base = folder(v, 'base')
+  const modes = folder(v, 'modes')
+  const massesV = folder(v, 'masses')
+  const count = Math.min(MAX_MASSES, Math.max(0, num(massesV, 'count', current.masses.length)))
+  const depth = folder(v, 'depth')
+  const motion = folder(v, 'motion')
+  const layer = (key: string) => folder(depth, key)
   const masses: Mass[] = []
   for (let i = 0; i < count; i++) {
-    const m = massesV[MASS_KEYS[i]] as Values
-    const pos = m.position as { x: number; y: number }
+    const m = folder(massesV, MASS_KEYS[i])
+    const was = current.masses[i] ?? current.masses[current.masses.length - 1] ?? SPARE_MASS
+    const pos = isValues(m.position) ? m.position : {}
     masses.push({
-      ...colourToOklch(m.color as string, m.value as number, current.masses[i]),
-      x: pos.x,
-      y: pos.y,
-      size: m.size as number,
-      softness: m.softness as number,
-      distance: m.distance as number,
-      locked: m.locked as boolean,
+      ...colourToOklch(typeof m.color === 'string' ? m.color : oklchToHex(was.hue, was.value, was.chroma), num(m, 'value', 0), was),
+      x: num(pos, 'x', was.x),
+      y: num(pos, 'y', was.y),
+      size: num(m, 'size', was.size),
+      softness: num(m, 'softness', was.softness),
+      distance: num(m, 'distance', was.distance),
+      locked: bool(m, 'locked', was.locked),
     })
   }
   const shadow = layer('shadow')
-  const simple = (key: string) => ({ on: layer(key).on as boolean, amount: layer(key).amount as number })
-  const finish = v.finish as Values
-  const mb = finish.motionBlur as Values
-  const lb = finish.layerBlur as Values
+  const simple = (key: Exclude<keyof CardDraft['depth'], 'light'>) => ({
+    on: bool(layer(key), 'on', current.depth[key].on),
+    amount: num(layer(key), 'amount', current.depth[key].amount),
+  })
+  const finish = folder(v, 'finish')
+  const mb = folder(finish, 'motionBlur')
+  const lb = folder(finish, 'layerBlur')
+  const mode = <K extends keyof Modes>(key: K, allowed: readonly string[]): Modes[K] =>
+    (allowed.includes(modes[key] as string) ? modes[key] : current.modes[key]) as Modes[K]
+  const wasRect = current.depth.shadow.rect
   return {
-    seed: v.seed as number,
+    seed: num(v, 'seed', current.seed),
     modes: {
-      colour: modes.colour as Modes['colour'],
-      bold: modes.bold as boolean,
-      coverage: modes.coverage as Modes['coverage'],
-      structure: modes.structure as Modes['structure'],
+      colour: mode('colour', COLOUR_MODES),
+      bold: bool(modes, 'bold', current.modes.bold),
+      coverage: mode('coverage', COVERAGE_MODES),
+      structure: mode('structure', STRUCTURE_MODES),
     },
-    base: { ...colourToOklch(base.color as string, base.value as number, current.base), locked: base.locked as boolean },
-    masses,
-    texture: { grain: (v.texture as Values).grain as number },
+    base: {
+      ...colourToOklch(
+        typeof base.color === 'string' ? base.color : oklchToHex(current.base.hue, current.base.value, current.base.chroma),
+        num(base, 'value', 0),
+        current.base,
+      ),
+      locked: bool(base, 'locked', current.base.locked),
+    },
+    masses: masses.length ? masses : current.masses,
+    texture: { grain: num(folder(v, 'texture'), 'grain', current.texture.grain) },
     depth: {
+      light: {
+        on: bool(layer('light'), 'on', current.depth.light.on),
+        height: num(layer('light'), 'height', current.depth.light.height),
+      },
       curve: simple('curve'),
       parallax: simple('parallax'),
       haze: simple('haze'),
-      swirl: simple('swirl'),
-      relief: { ...simple('relief'), frequency: layer('relief').frequency as number, twist: layer('relief').twist as number },
+      swirl: { ...simple('swirl'), scale: num(layer('swirl'), 'scale', current.depth.swirl.scale) },
+      relief: {
+        ...simple('relief'),
+        frequency: num(layer('relief'), 'frequency', current.depth.relief.frequency),
+        twist: num(layer('relief'), 'twist', current.depth.relief.twist),
+      },
+      strokes: {
+        ...simple('strokes'),
+        direction: num(layer('strokes'), 'direction', current.depth.strokes.direction),
+        followAngle: bool(layer('strokes'), 'followFamilyAngle', current.depth.strokes.followAngle),
+        length: num(layer('strokes'), 'length', current.depth.strokes.length),
+        density: num(layer('strokes'), 'density', current.depth.strokes.density),
+      },
       shadow: {
         ...simple('shadow'),
-        rect: [shadow.rectX as number, shadow.rectY as number, shadow.rectW as number, shadow.rectH as number],
-        offset: shadow.offset as number,
-        spread: shadow.spread as number,
+        rect: [
+          num(shadow, 'rectX', wasRect[0]),
+          num(shadow, 'rectY', wasRect[1]),
+          num(shadow, 'rectW', wasRect[2]),
+          num(shadow, 'rectH', wasRect[3]),
+        ],
+        offset: num(shadow, 'offset', current.depth.shadow.offset),
+        spread: num(shadow, 'spread', current.depth.shadow.spread),
       },
     },
     finish: {
       motionBlur: {
-        on: mb.on as boolean,
-        angle: mb.angle as number,
-        followAngle: mb.followFamilyAngle as boolean,
-        length: mb.length as number,
-        intensity: mb.intensity as number,
+        on: bool(mb, 'on', current.finish.motionBlur.on),
+        angle: num(mb, 'angle', current.finish.motionBlur.angle),
+        followAngle: bool(mb, 'followFamilyAngle', current.finish.motionBlur.followAngle),
+        length: num(mb, 'length', current.finish.motionBlur.length),
+        intensity: num(mb, 'intensity', current.finish.motionBlur.intensity),
       },
-      layerBlur: { on: lb.on as boolean, radius: lb.radius as number, intensity: lb.intensity as number },
+      layerBlur: {
+        on: bool(lb, 'on', current.finish.layerBlur.on),
+        radius: num(lb, 'radius', current.finish.layerBlur.radius),
+        intensity: num(lb, 'intensity', current.finish.layerBlur.intensity),
+      },
     },
-    captionMask: depth.captionMask as boolean,
-    loop: { ...current.loop, seconds: motion.loopSeconds as number },
+    captionMask: bool(depth, 'captionMask', current.captionMask),
+    loop: { ...current.loop, seconds: num(motion, 'loopSeconds', current.loop.seconds) },
   }
 }
 
@@ -270,6 +347,9 @@ function valuesFromDraft(draft: CardDraft): Values {
         offset: d.shadow.offset,
         spread: d.shadow.spread,
       }
+    } else if (name === 'strokes') {
+      const { followAngle, ...rest } = d.strokes
+      depth.strokes = { ...rest, followFamilyAngle: followAngle }
     } else {
       depth[name] = { ...d[name] }
     }
@@ -300,9 +380,11 @@ interface MassesPanelProps {
   /** The live card, in Focus. Without it the transport is inert. */
   handle: CardHandle | null
   reduced: boolean
+  /** Hosted build: the save action downloads instead. */
+  isStatic: boolean
 }
 
-export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
+export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelProps) {
   const family = useFamily()
   // The scrub slider's range follows the loop length. A control's bounds
   // are part of the config, which DialKit reconciles when it changes.
@@ -310,11 +392,11 @@ export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
 
   // The config is built once per card, so a dial drag never rebuilds it.
   const config = useMemo(
-    () => panelConfig(getDraft(preset.id), family, loopMax, reduced),
+    () => panelConfig(getDraft(preset.id), family, loopMax, reduced, isStatic),
     // The draft is read once per card on purpose; later edits flow the
     // other way, from the panel into the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [preset.id, family, loopMax, reduced],
+    [preset.id, family, loopMax, reduced, isStatic],
   )
   const dial = useDialKitController('Card', config, {
     id: 'shaderlab-card',
@@ -345,7 +427,14 @@ export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
       shownPresetRef.current = preset.id
       return
     }
-    if (pushingRef.current) return
+    // The run that follows a push: those values came from the store, and
+    // what DialKit made of them (a pad's rounding) must not go back as an
+    // edit. Cleared here, not in a microtask, which would run before this
+    // effect does.
+    if (pushingRef.current) {
+      pushingRef.current = false
+      return
+    }
     const current = getDraft(preset.id)
     const next = draftFromValues(v, current)
     // A mode changed on the panel: re-roll from the card's own seed with
@@ -353,19 +442,18 @@ export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
     // a hand-edited or locked one.
     const changedModes = (Object.keys(next.modes) as (keyof Modes)[]).filter((k) => next.modes[k] !== current.modes[k])
     if (changedModes.length) {
-      const origin = presetById(preset.id)
-      if (origin) {
-        const scope: RollScope = changedModes.includes('coverage')
-          ? 'coverage'
-          : changedModes.includes('structure')
-            ? 'structure'
-            : 'colour'
-        setDraft(
-          preset.id,
-          rollScoped(origin, current, getFamily(), current.seed, scope, { forced: next.modes, dirty: getDirty(preset.id) }),
-        )
-        return
-      }
+      // The library card is the origin: its file's values, or what a new
+      // card was born with.
+      const scope: RollScope = changedModes.includes('coverage')
+        ? 'coverage'
+        : changedModes.includes('structure')
+          ? 'structure'
+          : 'colour'
+      setDraft(
+        preset.id,
+        rollScoped(preset, current, getFamily(), current.seed, scope, { forced: next.modes, dirty: getDirty(preset.id) }),
+      )
+      return
     }
     if (stableStringify(next) !== stableStringify(current)) {
       // Whatever Joe just moved by hand is his until he says otherwise.
@@ -380,13 +468,16 @@ export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
   // --- Card store -> panel (a card switch, or the shuffle) --------------------
   useEffect(() => {
     const push = () => {
+      // Renamed or deleted under the panel: the next render brings the
+      // card that replaces it.
+      if (!hasCard(preset.id)) return
       const draft = getDraft(preset.id)
       if (stableStringify(draftFromValues(dial.getValues() as Values, draft)) === stableStringify(draft)) return
+      const before = stableStringify(dial.getValues())
       pushingRef.current = true
       dial.setValues(valuesFromDraft(draft) as never)
-      queueMicrotask(() => {
-        pushingRef.current = false
-      })
+      // No change in the panel means no effect run to clear the flag.
+      if (stableStringify(dial.getValues()) === before) pushingRef.current = false
     }
     push()
     return subscribeCards(push)
@@ -396,16 +487,34 @@ export function MassesPanel({ preset, handle, reduced }: MassesPanelProps) {
   const variety = v.variety as number
   const grainAnimate = (v.texture as Values).animate as boolean
   const motionAmount = (v.motion as Values).motion as number
+  const lightV = folder(v, 'light')
+  const lightKey = stableStringify(lightV)
   useEffect(() => {
     const f = getFamily()
-    if (f.variety === variety && f.texture.animate === grainAnimate && f.motion.amount === motionAmount) return
+    const light = {
+      angle: num(lightV, 'angle', f.light.angle),
+      followAngle: bool(lightV, 'followFamilyAngle', f.light.followAngle),
+      elevation: num(lightV, 'elevation', f.light.elevation),
+      amount: num(lightV, 'amount', f.light.amount),
+    }
+    if (
+      f.variety === variety &&
+      f.texture.animate === grainAnimate &&
+      f.motion.amount === motionAmount &&
+      stableStringify(f.light) === stableStringify(light)
+    ) {
+      return
+    }
     setFamily((fam) => ({
       ...fam,
       variety,
       texture: { ...fam.texture, animate: grainAnimate },
       motion: { ...fam.motion, amount: motionAmount },
+      light,
     }))
-  }, [variety, grainAnimate, motionAmount])
+    // lightKey stands in for the light folder's values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variety, grainAnimate, motionAmount, lightKey])
 
   // --- Transport and states, only with a live card ------------------------------
   const motion = v.motion as Values

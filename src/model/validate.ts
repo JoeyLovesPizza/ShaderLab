@@ -57,13 +57,18 @@ class Issues {
 
 function checkLayer(issues: Issues, value: unknown, path: string) {
   if (!isObj(value)) {
-    issues.add(path, 'must be { on, amount }')
+    issues.add(path, `must be { on, ${path.endsWith('light') ? 'height' : 'amount'} }`)
     return null
   }
   issues.bool(value, 'on', path)
-  issues.num(value, 'amount', path, 0, 1)
+  // Light carries a height, not an amount: it scales the field it shades.
+  issues.num(value, path.endsWith('light') ? 'height' : 'amount', path, 0, 1)
   return value
 }
+
+/** Depth parameters added after the first files; filled when missing. */
+const SWIRL_SCALE_DEFAULT = 0.6
+const STROKES_DEFAULT = { direction: 20, followAngle: true, length: 0.4, density: 80 }
 
 /** Fields added after the first files were written take their defaults
     when missing, so an older file still loads as it did. */
@@ -72,21 +77,58 @@ const FINISH_DEFAULT = {
   layerBlur: { on: false, radius: 0.04, intensity: 0.6 },
 }
 
+/** A depth layer that an older file does not have: off, at nothing. */
+const LAYER_DEFAULT: Record<string, Obj> = {
+  light: { on: false, height: 0.5 },
+  curve: { on: false, amount: 0 },
+  parallax: { on: false, amount: 0 },
+  haze: { on: false, amount: 0 },
+  swirl: { on: false, amount: 0, scale: 0.6 },
+  relief: { on: false, amount: 0, frequency: 85, twist: 6 },
+  strokes: { on: false, amount: 0.05, direction: 20, followAngle: true, length: 0.4, density: 80 },
+  shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
+}
+
+/*
+ * Migration, before the checks: a file written under an earlier version
+ * of the schema loads with warnings, never as invalid. A structure mode
+ * that no longer exists ("grid") becomes "none"; a depth key that no
+ * longer exists is dropped; a depth layer or finish stage added since is
+ * filled from its default. Only shapes that were never valid fail.
+ */
 function withDefaults(input: Obj, warnings: Issues): Obj {
   const out: Obj = { ...input }
-  if (out.finish === undefined) out.finish = structuredClone(FINISH_DEFAULT)
-  // The Grid layer was cut (2026-10-28); an older file's key is dropped.
-  if (isObj(out.depth) && 'grid' in out.depth) {
-    const { grid: _grid, ...rest } = out.depth
-    out.depth = rest
-    warnings.add('depth.grid', 'the Grid layer no longer exists; the key was ignored')
-  }
-  else if (isObj(out.finish)) {
-    const f = out.finish
-    out.finish = {
-      motionBlur: { ...FINISH_DEFAULT.motionBlur, ...(isObj(f.motionBlur) ? f.motionBlur : {}) },
-      layerBlur: { ...FINISH_DEFAULT.layerBlur, ...(isObj(f.layerBlur) ? f.layerBlur : {}) },
+  if (isObj(out.modes)) {
+    const m = out.modes
+    if (typeof m.structure === 'string' && !STRUCTURE_MODES.includes(m.structure as never)) {
+      warnings.add('modes.structure', `"${m.structure}" is no longer a structure; read as "none"`)
+      out.modes = { ...m, structure: 'none' }
     }
+  }
+  if (isObj(out.depth)) {
+    const depth: Obj = {}
+    for (const layer of DEPTH_ORDER) {
+      if (out.depth[layer] === undefined) {
+        warnings.add(`depth.${layer}`, 'missing; read as off')
+        depth[layer] = structuredClone(LAYER_DEFAULT[layer])
+      } else depth[layer] = out.depth[layer]
+    }
+    // Parameters that arrived after the first files: a swirl without its
+    // scale is the original marbling; strokes without their shape take
+    // the family's.
+    if (isObj(depth.swirl) && depth.swirl.scale === undefined) depth.swirl = { ...depth.swirl, scale: SWIRL_SCALE_DEFAULT }
+    if (isObj(depth.strokes)) depth.strokes = { ...STROKES_DEFAULT, ...depth.strokes }
+    for (const key of Object.keys(out.depth)) {
+      if (!(DEPTH_ORDER as readonly string[]).includes(key)) {
+        warnings.add(`depth.${key}`, 'no such layer; the key was ignored')
+      }
+    }
+    out.depth = depth
+  }
+  const f = isObj(out.finish) ? out.finish : {}
+  out.finish = {
+    motionBlur: { ...FINISH_DEFAULT.motionBlur, ...(isObj(f.motionBlur) ? f.motionBlur : {}) },
+    layerBlur: { ...FINISH_DEFAULT.layerBlur, ...(isObj(f.layerBlur) ? f.layerBlur : {}) },
   }
   return out
 }
@@ -192,9 +234,16 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
     for (const layer of DEPTH_ORDER) {
       const v = checkLayer(issues, input.depth[layer], `depth.${layer}`)
       if (!v) continue
+      if (layer === 'swirl') issues.num(v, 'scale', 'depth.swirl', 0.1, 3)
       if (layer === 'relief') {
         issues.num(v, 'frequency', 'depth.relief', 1, 400)
         issues.num(v, 'twist', 'depth.relief', -90, 90)
+      }
+      if (layer === 'strokes') {
+        issues.num(v, 'direction', 'depth.strokes', -360, 360)
+        issues.bool(v, 'followAngle', 'depth.strokes')
+        issues.num(v, 'length', 'depth.strokes', 0.05, 2)
+        issues.num(v, 'density', 'depth.strokes', 5, 400)
       }
       if (layer === 'shadow') {
         const rect = v.rect
@@ -205,14 +254,14 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
         issues.num(v, 'spread', 'depth.shadow', 0, 1)
       }
     }
-    // Of Swirl and Relief at most one may be on (SPEC.md §4).
+    // Of Swirl, Relief and Strokes at most one may be on (SPEC.md §4).
     const depth = input.depth
     const structuresOn = STRUCTURE_LAYERS.filter((name) => {
       const layer = depth[name]
       return isObj(layer) && layer.on === true
     })
     if (structuresOn.length > 1) {
-      issues.add('depth', `only one of swirl and relief may be on; ${structuresOn.join(' and ')} are`)
+      issues.add('depth', `only one of ${STRUCTURE_LAYERS.join(', ')} may be on; ${structuresOn.join(' and ')} are`)
     }
   }
 
@@ -322,6 +371,14 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
     }
   }
   issues.num(input, 'captionZone', '', 0, 0.6)
+  // The light arrived after the first families; an older file gets the
+  // SPEC.md defaults (from the family's angle, 35° up, amount 0.2).
+  const light: Obj = { angle: 20, followAngle: true, elevation: 35, amount: 0.2, ...(isObj(input.light) ? input.light : {}) }
+  input.light = light
+  issues.num(light, 'angle', 'light', -360, 360)
+  issues.bool(light, 'followAngle', 'light')
+  issues.num(light, 'elevation', 'light', 5, 90)
+  issues.num(light, 'amount', 'light', 0, 0.5)
   if (!isObj(input.finish) || !isObj(input.finish.motionBlur) || !isObj(input.finish.layerBlur)) {
     issues.add('finish', 'must be { motionBlur: { allowed, length, intensity }, layerBlur: { allowed, radius, intensity } }')
   } else {
@@ -334,10 +391,18 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
     issues.range(l, 'radius', 'finish.layerBlur', 0, 0.15)
     issues.range(l, 'intensity', 'finish.layerBlur', 0, 1)
   }
-  if (!isObj(input.depth)) issues.add('depth', 'must list the six layers')
+  if (!isObj(input.depth)) issues.add('depth', `must list the layers: ${DEPTH_ORDER.join(', ')}`)
   else {
+    // Layers added after the first families take SPEC.md's defaults.
+    const depth: Obj = {
+      light: { on: true, allowed: true, amount: [0.3, 0.7] },
+      strokes: { on: false, allowed: true, amount: [0.03, 0.08], length: 0.4, density: 80 },
+      ...input.depth,
+    }
+    if (isObj(depth.swirl) && depth.swirl.scale === undefined) depth.swirl = { ...depth.swirl, scale: SWIRL_SCALE_DEFAULT }
+    input.depth = depth
     for (const layer of DEPTH_ORDER) {
-      const v = input.depth[layer]
+      const v = depth[layer]
       if (!isObj(v)) {
         issues.add(`depth.${layer}`, 'must be { on, allowed, amount: [min, max] }')
         continue
@@ -345,9 +410,14 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
       issues.bool(v, 'on', `depth.${layer}`)
       issues.bool(v, 'allowed', `depth.${layer}`)
       issues.range(v, 'amount', `depth.${layer}`, 0, 1)
+      if (layer === 'swirl') issues.num(v, 'scale', 'depth.swirl', 0.1, 3)
       if (layer === 'relief') {
         issues.num(v, 'frequency', 'depth.relief', 1, 400)
         issues.num(v, 'twist', 'depth.relief', -90, 90)
+      }
+      if (layer === 'strokes') {
+        issues.num(v, 'length', 'depth.strokes', 0.05, 2)
+        issues.num(v, 'density', 'depth.strokes', 5, 400)
       }
     }
   }

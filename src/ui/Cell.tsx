@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion } from 'motion/react'
 import { getDraft, useDirtyPaths, useDraft, useModified } from '../model/cards'
+import { useSource } from '../model/library'
 import { getFamily, useFamily } from '../model/family'
 import { PRESET_ERRORS } from '../model/presets'
 import { L_RANGE_MIN, type Preset } from '../model/types'
@@ -64,6 +65,9 @@ export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover }
   const draft = useDraft(preset.id)
   const modified = useModified(preset.id)
   const dirtyPaths = useDirtyPaths(preset.id)
+  // null: never saved; a different id: renamed since its file was written.
+  const source = useSource(preset.id)
+  const unsaved = source === null || (source !== undefined && source !== preset.id)
   const family = useFamily()
   const shaderVersion = useStageVersion()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -175,6 +179,7 @@ export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover }
         state: () => cardStateFrom(preset, getDraft(preset.id), getFamily()),
         dpr: () => 1,
         time: preset.loop.stillTime,
+        onError: (message) => setRenderError(message),
         onDraw: aura
           ? () => {
               const now = performance.now()
@@ -254,9 +259,10 @@ export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover }
         <canvas ref={canvasRef} className="cell__canvas" />
         <canvas ref={posterRef} className="cell__canvas cell__poster" aria-hidden />
         {!focused && <span className="cell__name">{preset.meta.name}</span>}
-        {!focused && modified && (
+        {!focused && (modified || unsaved) && (
           <span className="cell__badge" title={dirtyPaths || undefined}>
-            modified{dirtyPaths && <span className="cell__dot" aria-label="has hand edits" />}
+            {unsaved ? 'unsaved' : 'modified'}
+            {dirtyPaths && <span className="cell__dot" aria-label="has hand edits" />}
           </span>
         )}
       </motion.div>

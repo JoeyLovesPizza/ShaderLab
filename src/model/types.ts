@@ -39,26 +39,53 @@ export interface DepthLayer {
   amount: number
 }
 
+/**
+ * Light (SPEC.md §2): the masses, Curve, Relief and Strokes make a height
+ * field, and one directional light from the family shades its normal.
+ * `height` scales the field; at 0 the card is flat and looks as it did
+ * without the layer.
+ */
+export interface LightLayer {
+  on: boolean
+  height: number
+}
+
+/**
+ * Strokes (SPEC.md §2, "painted grass"): fibres along one direction, as
+ * ±lightness and as low ridges in the height field. `direction` is
+ * degrees, ignored while `followAngle` takes the family's; `length` is
+ * card widths; `density` is fibres across the card's height.
+ */
+export interface StrokesLayer extends DepthLayer {
+  direction: number
+  followAngle: boolean
+  length: number
+  density: number
+}
+
 /** The depth stack, in compositing order. */
 export interface Depth {
+  light: LightLayer
   curve: DepthLayer
   parallax: DepthLayer
   haze: DepthLayer
-  swirl: DepthLayer
+  /** `scale` is the warp's wavelength in card widths (0.6 is the marbling; 1.2 one slow fold). */
+  swirl: DepthLayer & { scale: number }
   relief: DepthLayer & { frequency: number; twist: number }
+  strokes: StrokesLayer
   shadow: DepthLayer & { rect: [number, number, number, number]; offset: number; spread: number }
 }
 
 export type DepthLayerName = keyof Depth
-export const DEPTH_ORDER: DepthLayerName[] = ['curve', 'parallax', 'haze', 'swirl', 'relief', 'shadow']
+export const DEPTH_ORDER: DepthLayerName[] = ['light', 'curve', 'parallax', 'haze', 'swirl', 'relief', 'strokes', 'shadow']
 /** Of these, at most one may be on per card. */
-export const STRUCTURE_LAYERS = ['swirl', 'relief'] as const
+export const STRUCTURE_LAYERS = ['swirl', 'relief', 'strokes'] as const
 export type StructureLayer = (typeof STRUCTURE_LAYERS)[number]
 
 /** The three choices the shuffle rolls before it rolls numbers (SPEC.md §2). */
 export const COLOUR_MODES = ['mono', 'warm-cool', 'triad', 'free'] as const
 export const COVERAGE_MODES = ['blend', 'block', 'flat'] as const
-export const STRUCTURE_MODES = ['none', 'swirl', 'relief'] as const
+export const STRUCTURE_MODES = ['none', 'swirl', 'relief', 'strokes'] as const
 export type ColourMode = (typeof COLOUR_MODES)[number]
 export type CoverageMode = (typeof COVERAGE_MODES)[number]
 export type StructureMode = (typeof STRUCTURE_MODES)[number]
@@ -216,12 +243,25 @@ export interface Family {
     layerBlur: { allowed: boolean; radius: Range; intensity: Range }
   }
   captionZone: number
+  /** The one light every card is shaded by (SPEC.md §2, Light). */
+  light: {
+    /** Degrees; ignored while `followAngle` takes the family's direction. */
+    angle: number
+    followAngle: boolean
+    /** Degrees above the surface. */
+    elevation: number
+    /** How far the shade moves lightness, 0.1–0.3. */
+    amount: number
+  }
   depth: {
+    /** `amount` is the height range for a new card. */
+    light: FamilyLayer
     curve: FamilyLayer
     parallax: FamilyLayer
     haze: FamilyLayer
-    swirl: FamilyLayer
+    swirl: FamilyLayer & { scale: number }
     relief: FamilyLayer & { frequency: number; twist: number }
+    strokes: FamilyLayer & { length: number; density: number }
     shadow: FamilyLayer
   }
   /** `version` rises when the family's defaults change in a way that makes

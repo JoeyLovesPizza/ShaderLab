@@ -1,0 +1,10 @@
+{
+  "_comment": "QA additions for package.json. Not applied automatically: the Builder owns package.json. Until vitest is installed, run the suite from the npx cache: `npx --yes vitest@4 run --root . -c tests/vitest.config.ts`. The smoke script borrows Playwright from a sibling repo (HITL, Films or Bitmania); add it here only if ShaderLab should stop depending on that.",
+  "devDependencies": {
+    "vitest": "^4.1.12"
+  },
+  "scripts": {
+    "test": "vitest run --root . -c tests/vitest.config.ts",
+    "smoke": "node scripts/smoke.mjs"
+  }
+}
