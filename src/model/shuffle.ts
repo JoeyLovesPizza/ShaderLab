@@ -9,6 +9,7 @@ import {
   type CoverageMode,
   type Family,
   type Mass,
+  blobMass,
   type Modes,
   type Preset,
   type Range,
@@ -303,7 +304,7 @@ export function shuffle(
       y = between(rnd, family.masses.y)
     }
 
-    masses.push({
+    const rolled = blobMass({
       hue: r1(massHues[i]),
       value: r4(clampTo(jitter(rnd, valueCentre, VALUE_JITTER * (1 + 2 * variety)), [L_MIN, L_MAX])),
       chroma: r4(clampTo(vary(rnd, chromaCentre, [0, cap], variety), [0, cap])),
@@ -314,6 +315,14 @@ export function shuffle(
       distance: r4(clampTo(jitter(rnd, from?.distance ?? 0.5, 0.2), [0, 1])),
       locked: false,
     })
+    // A ridge keeps its shape and ramp: the roll moves its colour and
+    // its middle control point, not the curve Joe drew.
+    if (current?.kind === 'ridge') {
+      rolled.kind = 'ridge'
+      rolled.path = structuredClone(current.path)
+      rolled.ramp = structuredClone(current.ramp)
+    }
+    masses.push(rolled)
   }
 
   // Guardrail: a dark or low-chroma mass, unless the card is flat.

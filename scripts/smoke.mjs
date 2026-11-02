@@ -30,9 +30,10 @@ if (!url) {
   const { createServer } = await import('vite')
   // Its own dep cache, so it never races the server on 5176 for .vite/deps.
   const config = { root, configFile: resolve(root, 'vite.config.ts'), cacheDir: 'node_modules/.vite-smoke', logLevel: 'silent' }
-  server = await createServer({ ...config, server: { port: PORT, strictPort: true, host: 'localhost' } })
+  // From PORT upward: another repo's dev server on 5181 must not fail the run.
+  server = await createServer({ ...config, server: { port: PORT, strictPort: false, host: 'localhost' } })
   await server.listen()
-  url = `http://localhost:${PORT}/`
+  url = server.resolvedUrls?.local[0] ?? `http://localhost:${server.config.server.port}/`
 }
 
 const errors = []

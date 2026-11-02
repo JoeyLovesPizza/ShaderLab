@@ -3,7 +3,7 @@ import { dropCard, ensureCard, getDraft, moveCard, reloadFile, setDraft } from '
 import { getFamily } from './family'
 import { PRESETS, blankPreset, onPresetFiles } from './presets'
 import { newSeed, rollScoped } from './shuffle'
-import type { Preset } from './types'
+import { blobMass, type Preset } from './types'
 import { validatePreset } from './validate'
 
 /*
@@ -141,8 +141,8 @@ export function newCard(): Preset {
   template.seed = seed
   template.base = { hue: Math.floor(Math.random() * 360), value: (family.base.value[0] + family.base.value[1]) / 2, chroma: 0.03, locked: false }
   template.masses = [
-    { hue: template.base.hue, value: 0.8, chroma: 0.1, x: 1.15, y: 0.85, size: 0.45, softness: 0.8, distance: 0.5, locked: false },
-    { hue: template.base.hue, value: 0.3, chroma: 0.05, x: 0.3, y: 0.2, size: 0.4, softness: 0.85, distance: 0.8, locked: false },
+    blobMass({ hue: template.base.hue, value: 0.8, chroma: 0.1, x: 1.15, y: 0.85, size: 0.45, softness: 0.8, distance: 0.5, locked: false }),
+    blobMass({ hue: template.base.hue, value: 0.3, chroma: 0.05, x: 0.3, y: 0.2, size: 0.4, softness: 0.85, distance: 0.8, locked: false }),
   ]
   template.texture.grain = family.texture.grain
   for (const layer of ['curve', 'parallax', 'haze', 'swirl', 'relief', 'strokes', 'shadow'] as const) {

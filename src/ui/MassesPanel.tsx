@@ -26,6 +26,8 @@ import {
   type CardDraft,
   type Family,
   type Mass,
+  MASS_KINDS,
+  blobMass,
   type Modes,
   type Preset,
   type StateName,
@@ -88,27 +90,40 @@ function colourToOklch(color: string, offset: number, current?: Oklch): Oklch {
   }
 }
 
+// Bounds are the validator's (validate.ts): a narrower control would
+// clamp a valid file's value on the way in and mark it modified.
+const pad = (p: { x: number; y: number }) => ({
+  type: 'pad' as const,
+  x: slider(p.x, -1, 3, 0.01),
+  y: slider(p.y, -1, 2, 0.01),
+  labels: { x: 'Across', y: 'Up' },
+})
+
+/**
+ * One mass. A blob uses the colour, the position and the size; a ridge
+ * (Kind) runs from Start through the position to End, `size` as its half
+ * width, coloured Start → colour → End along it. One Value offset lifts
+ * all three colours.
+ */
 function massConfig(mass: Mass, _family: Family) {
   return {
+    kind: select(MASS_KINDS, mass.kind),
     color: oklchToHex(mass.hue, mass.value, mass.chroma),
     value: VALUE_OFFSET,
-    // Bounds are the validator's (validate.ts): a narrower control would
-    // clamp a valid file's value on the way in and mark it modified.
-    position: {
-      type: 'pad' as const,
-      x: slider(mass.x, -1, 3, 0.01),
-      y: slider(mass.y, -1, 2, 0.01),
-      labels: { x: 'Across', y: 'Up' },
-    },
+    position: pad(mass),
     size: slider(mass.size, 0.05, 4, 0.01),
     softness: slider(mass.softness, 0, 1, 0.01),
     distance: slider(mass.distance, 0, 1, 0.01),
     locked: mass.locked,
+    start: pad(mass.path.start),
+    end: pad(mass.path.end),
+    colorStart: oklchToHex(mass.ramp.start.hue, mass.ramp.start.value, mass.ramp.start.chroma),
+    colorEnd: oklchToHex(mass.ramp.end.hue, mass.ramp.end.value, mass.ramp.end.chroma),
   }
 }
 
 /** A mass slot beyond the draft's count: parked, so adding one is a no-op. */
-const SPARE_MASS: Mass = { hue: 0, value: 0.5, chroma: 0, x: 1.2, y: 0.5, size: 0.6, softness: 0.7, distance: 0.8, locked: false }
+const SPARE_MASS: Mass = blobMass({ hue: 0, value: 0.5, chroma: 0, x: 1.2, y: 0.5, size: 0.6, softness: 0.7, distance: 0.8, locked: false })
 
 function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced: boolean, isStatic: boolean): DialConfig {
   const masses: Record<string, unknown> = { count: slider(draft.masses.length, 1, MAX_MASSES, 1) }
@@ -137,7 +152,7 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
     depth: {
       // Light (SPEC.md §2): the card's height; the light itself is the
       // family's, in its own folder below.
-      light: { on: d.light.on, height: slider(d.light.height, 0, 1, 0.01) },
+      light: { on: d.light.on, height: slider(d.light.height, 0, 2, 0.01) },
       curve: { on: d.curve.on, amount: slider(d.curve.amount, 0, 1, 0.01) },
       parallax: { on: d.parallax.on, amount: slider(d.parallax.amount, 0, 1, 0.01) },
       haze: { on: d.haze.on, amount: slider(d.haze.amount, 0, 1, 0.01) },
@@ -226,14 +241,25 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
     const m = folder(massesV, MASS_KEYS[i])
     const was = current.masses[i] ?? current.masses[current.masses.length - 1] ?? SPARE_MASS
     const pos = isValues(m.position) ? m.position : {}
+    const start = isValues(m.start) ? m.start : {}
+    const end = isValues(m.end) ? m.end : {}
+    const offset = num(m, 'value', 0)
+    const colour = (key: string, was: { hue: number; value: number; chroma: number }) =>
+      colourToOklch(typeof m[key] === 'string' ? (m[key] as string) : oklchToHex(was.hue, was.value, was.chroma), offset, was)
     masses.push({
-      ...colourToOklch(typeof m.color === 'string' ? m.color : oklchToHex(was.hue, was.value, was.chroma), num(m, 'value', 0), was),
+      kind: MASS_KINDS.includes(m.kind as never) ? (m.kind as Mass['kind']) : was.kind,
+      ...colour('color', was),
       x: num(pos, 'x', was.x),
       y: num(pos, 'y', was.y),
       size: num(m, 'size', was.size),
       softness: num(m, 'softness', was.softness),
       distance: num(m, 'distance', was.distance),
       locked: bool(m, 'locked', was.locked),
+      path: {
+        start: { x: num(start, 'x', was.path.start.x), y: num(start, 'y', was.path.start.y) },
+        end: { x: num(end, 'x', was.path.end.x), y: num(end, 'y', was.path.end.y) },
+      },
+      ramp: { start: colour('colorStart', was.ramp.start), end: colour('colorEnd', was.ramp.end) },
     })
   }
   const shadow = layer('shadow')
@@ -324,6 +350,7 @@ function valuesFromDraft(draft: CardDraft): Values {
     const m = draft.masses[i]
     if (!m) return
     masses[key] = {
+      kind: m.kind,
       color: oklchToHex(m.hue, m.value, m.chroma),
       value: 0,
       position: { x: m.x, y: m.y },
@@ -331,6 +358,10 @@ function valuesFromDraft(draft: CardDraft): Values {
       softness: m.softness,
       distance: m.distance,
       locked: m.locked,
+      start: { x: m.path.start.x, y: m.path.start.y },
+      end: { x: m.path.end.x, y: m.path.end.y },
+      colorStart: oklchToHex(m.ramp.start.hue, m.ramp.start.value, m.ramp.start.chroma),
+      colorEnd: oklchToHex(m.ramp.end.hue, m.ramp.end.value, m.ramp.end.chroma),
     }
   })
   const d = draft.depth

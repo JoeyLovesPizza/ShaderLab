@@ -21,7 +21,7 @@
       "on": true
     },
     "light": {
-      "height": 0.5,
+      "height": 1.5,
       "on": true
     },
     "parallax": {
@@ -47,8 +47,8 @@
       "spread": 0.1
     },
     "strokes": {
-      "amount": 0.05,
-      "density": 80,
+      "amount": 0.018,
+      "density": 150,
       "direction": 20,
       "followAngle": true,
       "length": 0.4,
@@ -72,7 +72,30 @@
       "chroma": 0.14,
       "distance": 0.5,
       "hue": 50,
+      "kind": "blob",
       "locked": false,
+      "path": {
+        "end": {
+          "x": 1.15,
+          "y": 1.25
+        },
+        "start": {
+          "x": 0.35,
+          "y": 0.85
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.14,
+          "hue": 50,
+          "value": 0.68
+        },
+        "start": {
+          "chroma": 0.14,
+          "hue": 50,
+          "value": 0.68
+        }
+      },
       "size": 0.26955954323001635,
       "softness": 0.8,
       "value": 0.68,
@@ -83,7 +106,30 @@
       "chroma": 0.12,
       "distance": 0.8,
       "hue": 340,
+      "kind": "blob",
       "locked": false,
+      "path": {
+        "end": {
+          "x": 0.5,
+          "y": 0.75
+        },
+        "start": {
+          "x": -0.3,
+          "y": 0.35
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.12,
+          "hue": 340,
+          "value": 0.6
+        },
+        "start": {
+          "chroma": 0.12,
+          "hue": 340,
+          "value": 0.6
+        }
+      },
       "size": 0.2096574225122349,
       "softness": 0.85,
       "value": 0.6,
@@ -94,7 +140,30 @@
       "chroma": 0.04,
       "distance": 0.8,
       "hue": 85,
+      "kind": "blob",
       "locked": false,
+      "path": {
+        "end": {
+          "x": 1.6,
+          "y": 0.3
+        },
+        "start": {
+          "x": 0.8,
+          "y": -0.1
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.04,
+          "hue": 85,
+          "value": 0.3
+        },
+        "start": {
+          "chroma": 0.04,
+          "hue": 85,
+          "value": 0.3
+        }
+      },
       "size": 0.2396084828711256,
       "softness": 0.9,
       "value": 0.3,

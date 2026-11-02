@@ -27,8 +27,8 @@
     "light": {
       "allowed": true,
       "amount": [
-        0.3,
-        0.7
+        1,
+        2
       ],
       "on": true
     },
@@ -61,10 +61,10 @@
     "strokes": {
       "allowed": true,
       "amount": [
-        0.03,
-        0.08
+        0.01,
+        0.03
       ],
-      "density": 80,
+      "density": 150,
       "length": 0.4,
       "on": false
     },
@@ -104,9 +104,9 @@
   },
   "light": {
     "amount": 0.2,
-    "angle": 20,
-    "elevation": 35,
-    "followAngle": true
+    "angle": 90,
+    "elevation": 30,
+    "followAngle": false
   },
   "masses": {
     "boldAllowed": true,
@@ -135,8 +135,8 @@
   },
   "meta": {
     "created": "2026-10-28",
-    "name": "masses@1 family (Critic defaults, SPEC.md §4, 2026-10-28; Light and Strokes 2026-11-02)",
-    "version": 3
+    "name": "masses@1 family (Critic defaults, SPEC.md \u00a74, 2026-10-28; Light and Strokes 2026-11-02)",
+    "version": 4
   },
   "motion": {
     "amount": 0.6,
