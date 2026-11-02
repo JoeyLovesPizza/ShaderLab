@@ -82,6 +82,7 @@ uniform float u_strokes;       // ±L amount; below zero means off
 uniform float u_strokesAngle;  // degrees
 uniform float u_strokesLength; // card widths
 uniform float u_strokesDensity;// fibres across the card's height
+uniform float u_strokesMotion; // 0..1: drift, sway and breathing over the loop
 uniform float u_shadow;
 uniform vec4  u_shadowRect;    // x, y, w, h as fractions of the card, y from the bottom
 uniform float u_shadowOffset;
@@ -197,12 +198,20 @@ vec2 pleatGrad(vec2 p, float phase, float aspect) {
 // direction, the way a dry brush or a long exposure draws fibres. The
 // warp is a low-frequency wave, sampled once and shared by the taps that
 // take the gradient, so the fibres undulate together.
+// The along axis is tiled: it runs round a circle in two noise
+// dimensions, so the fibres repeat every STROKE_PERIOD units and a drift
+// of whole periods per loop lands exactly where it started.
+const float STROKE_PERIOD = 1.0;
 float strokeFibres(float along, float across, float aspect) {
   float density = u_strokesDensity;
   // ~40:1 at the default length; longer fibres stretch it further.
   float alongK = density / 40.0 * 0.4 / max(u_strokesLength, 0.05);
-  float n = snoise(vec4(along * alongK, across * density, 3.0, 9.0))
-          + 0.35 * snoise(vec4(along * alongK * 2.1, across * density * 2.1, 7.0, 13.0));
+  float theta = along * TAU / STROKE_PERIOD;
+  float r1 = STROKE_PERIOD * alongK / TAU;
+  float r2 = r1 * 2.1;
+  vec2 c = vec2(cos(theta), sin(theta));
+  float n = snoise(vec4(c * r1, across * density, 9.0))
+          + 0.35 * snoise(vec4(c * r2 + 7.0, across * density * 2.1, 13.0));
   return n / 1.35;
 }
 
@@ -360,10 +369,22 @@ void main() {
     // come and go, n2 breaks them. Nothing displaces a stroke's position
     // beyond the one faint wave (under 1% of the card's height), which
     // keeps the fibres from knotting or bending into contours.
-    float n1 = 0.5 + 0.5 * snoise(vec4(q * 0.9, 31.0, 7.0));
-    float n2 = 0.5 + 0.5 * snoise(vec4(q * 1.3 + 5.0, 43.0, 19.0));
-    float along = dot(q, dir) + 0.025 * snoise(vec4(q * 0.8, 23.0, 5.0));
-    float across = dot(q, perp) + 0.009 * snoise(vec4(q * 1.5, 11.0, 17.0)) + 0.003 * snoise(vec4(q * 4.5, 41.0, 29.0));
+    // Motion, all of it periodic in the loop and never reversing:
+    // breathing samples the presence noises on a circle over the loop (as
+    // the masses drift), sway turns the undulation's phase once per loop
+    // with a per-band offset so the field does not bend in unison, and
+    // drift slides the fibres along by whole tiling periods per loop.
+    float mo = u_strokesMotion;
+    float loopT = u_time / u_loopSeconds;
+    vec2 breath = vec2(cos(loopT * TAU), sin(loopT * TAU)) * 0.6 * mo;
+    float n1 = 0.5 + 0.5 * snoise(vec4(q * 0.9, 31.0 + breath.x, 7.0 + breath.y));
+    float n2 = 0.5 + 0.5 * snoise(vec4(q * 1.3 + 5.0, 43.0 + breath.y, 19.0 + breath.x));
+    float band = floor(dot(q, perp) * u_strokesDensity * 0.25);
+    float swayPhase = loopT * TAU + band * 2.399;
+    vec2 sway = vec2(cos(swayPhase), sin(swayPhase)) * 0.8 * mo;
+    float drift = loopT * STROKE_PERIOD * floor(mo * 2.0 + 0.5);
+    float along = dot(q, dir) + drift + 0.025 * snoise(vec4(q * 0.8, 23.0, 5.0));
+    float across = dot(q, perp) + 0.009 * snoise(vec4(q * 1.5, 11.0 + sway.x, 17.0 + sway.y)) + 0.003 * snoise(vec4(q * 4.5, 41.0, 29.0));
     float presence = (0.3 + 0.7 * n1) * smoothstep(0.35, 0.65, n2);
     // The ridge's slope is kept the same whatever the density.
     float eps = 0.002;

@@ -46,6 +46,7 @@ export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTi
         direction: r(d.strokes.direction, 1),
         length: r(d.strokes.length),
         density: r(d.strokes.density, 1),
+        motion: r(d.strokes.motion),
       },
       shadow: { ...d.shadow, amount: r(d.shadow.amount), rect: d.shadow.rect.map((n) => r(n)) as [number, number, number, number] },
     },

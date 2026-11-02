@@ -52,6 +52,7 @@
       "direction": 20,
       "followAngle": true,
       "length": 0.4,
+      "motion": 0.5,
       "on": false
     },
     "swirl": {

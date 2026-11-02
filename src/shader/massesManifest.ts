@@ -54,6 +54,8 @@ export const UNIFORMS = {
   u_strokesAngle: { kind: 'float', default: 20 },
   u_strokesLength: { kind: 'float', default: 0.4 },
   u_strokesDensity: { kind: 'float', default: 80 },
+  /** 0..1: drift, sway and breathing over the loop. */
+  u_strokesMotion: { kind: 'float', default: 0.5 },
   u_shadow: { kind: 'float', default: -1 },
   u_shadowRect: { kind: 'vec4', default: [0.08, 0.1, 0.84, 0.8] },
   u_shadowOffset: { kind: 'float', default: 0.03 },

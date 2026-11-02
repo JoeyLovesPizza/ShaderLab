@@ -98,6 +98,8 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_strokesAngle = d.strokes.followAngle ? family.motion.angle : d.strokes.direction
   u.u_strokesLength = d.strokes.length
   u.u_strokesDensity = d.strokes.density
+  // The fibres' own motion, scaled by the one Motion dial like the drift.
+  u.u_strokesMotion = Math.min(1, d.strokes.motion * (family.motion.amount / 0.6))
   u.u_shadow = amount(d.shadow)
   u.u_shadowRect = [...d.shadow.rect]
   u.u_shadowOffset = d.shadow.offset

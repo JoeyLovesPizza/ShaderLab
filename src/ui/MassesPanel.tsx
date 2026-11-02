@@ -170,6 +170,7 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
         followFamilyAngle: d.strokes.followAngle,
         length: slider(d.strokes.length, 0.05, 2, 0.01),
         density: slider(d.strokes.density, 5, 400, 1),
+        motion: slider(d.strokes.motion, 0, 1, 0.01),
       },
       shadow: {
         on: d.shadow.on,
@@ -311,6 +312,7 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
         followAngle: bool(layer('strokes'), 'followFamilyAngle', current.depth.strokes.followAngle),
         length: num(layer('strokes'), 'length', current.depth.strokes.length),
         density: num(layer('strokes'), 'density', current.depth.strokes.density),
+        motion: num(layer('strokes'), 'motion', current.depth.strokes.motion),
       },
       shadow: {
         ...simple('shadow'),

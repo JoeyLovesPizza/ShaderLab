@@ -44,7 +44,7 @@ export function blankPreset(id: string, name: string): Preset {
       haze: { on: false, amount: 0 },
       swirl: { on: false, amount: 0, scale: 0.6 },
       relief: { on: false, amount: 0, frequency: 85, twist: 6 },
-      strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150 },
+      strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150, motion: 0.5 },
       shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
     },
     finish: {

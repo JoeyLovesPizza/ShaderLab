@@ -95,6 +95,9 @@ export interface StrokesLayer extends DepthLayer {
   followAngle: boolean
   length: number
   density: number
+  /** How much the fibres drift, sway and breathe over the loop, 0..1;
+      scaled by the family's Motion dial. */
+  motion: number
 }
 
 /** The depth stack, in compositing order. */

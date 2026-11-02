@@ -71,7 +71,7 @@ function checkLayer(issues: Issues, value: unknown, path: string) {
 
 /** Depth parameters added after the first files; filled when missing. */
 const SWIRL_SCALE_DEFAULT = 0.6
-const STROKES_DEFAULT = { direction: 20, followAngle: true, length: 0.4, density: 150 }
+const STROKES_DEFAULT = { direction: 20, followAngle: true, length: 0.4, density: 150, motion: 0.5 }
 
 /** Fields added after the first files were written take their defaults
     when missing, so an older file still loads as it did. */
@@ -88,7 +88,7 @@ const LAYER_DEFAULT: Record<string, Obj> = {
   haze: { on: false, amount: 0 },
   swirl: { on: false, amount: 0, scale: 0.6 },
   relief: { on: false, amount: 0, frequency: 85, twist: 6 },
-  strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150 },
+  strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150, motion: 0.5 },
   shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
 }
 
@@ -298,6 +298,7 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
         issues.bool(v, 'followAngle', 'depth.strokes')
         issues.num(v, 'length', 'depth.strokes', 0.05, 2)
         issues.num(v, 'density', 'depth.strokes', 5, 400)
+        issues.num(v, 'motion', 'depth.strokes', 0, 1)
       }
       if (layer === 'shadow') {
         const rect = v.rect
