@@ -11,7 +11,8 @@
     "test": "vitest run --root . -c tests/vitest.config.ts",
     "smoke": "node scripts/smoke.mjs",
     "check": "tsc -p tsconfig.app.json --noEmit && oxlint && node scripts/check-presets.mjs && npx vitest run --root . -c tests/vitest.config.ts && node scripts/smoke.mjs",
-    "ship": "node scripts/ship.mjs"
+    "ship": "node scripts/ship.mjs",
+    "deploy": "sh scripts/deploy.sh"
   },
   "dependencies": {
     "dialkit": "2.0.2",
