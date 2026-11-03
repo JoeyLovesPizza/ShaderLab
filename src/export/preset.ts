@@ -25,11 +25,14 @@ export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTi
       distance: r(m.distance),
       path: {
         start: { x: r(m.path.start.x), y: r(m.path.start.y) },
+        control1: { x: r(m.path.control1.x), y: r(m.path.control1.y) },
+        control2: { x: r(m.path.control2.x), y: r(m.path.control2.y) },
         end: { x: r(m.path.end.x), y: r(m.path.end.y) },
       },
       ramp: {
         start: { hue: r(m.ramp.start.hue, 1), value: r(m.ramp.start.value), chroma: r(m.ramp.start.chroma) },
         end: { hue: r(m.ramp.end.hue, 1), value: r(m.ramp.end.value), chroma: r(m.ramp.end.chroma) },
+        fieldMix: r(m.ramp.fieldMix),
       },
     })),
     texture: { grain: r(draft.texture.grain) },

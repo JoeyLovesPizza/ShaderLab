@@ -23,6 +23,7 @@ show. Opaque exports hide it completely.
 | `Portfolio/public/work/shaders/card-<id>.webp` | The background image, 1226×816, about 160–200 KB. `<id>` is the background's id from `backgrounds.json`, chosen per card. |
 | `Portfolio/public/shaders/<id>.json` | The ShaderLab preset the image was rendered from. Not needed at runtime; keep it so the card can be re-rendered or animated later. |
 | `Portfolio/public/shaders/backgrounds.json` | Manifest: every background, its file, its project, and the average colour to use as the card's `shadowColor`. |
+| `Portfolio/public/work/shaders/card-<id>.mp4` | The animated loop as H.264 (faststart, no audio), present when the card was exported with WebM on; `ship` transcodes it from the WebM, which sits alongside. In `backgrounds.json` it is the entry's `video`. Hand it to `VideoLoop` as the card's clip with the `.webp` as the poster; a card without `video` keeps the still. |
 | `ShaderLab/handoff/ShaderBackground.tsx` | A component that renders one background into the art layer. Copy it into `Portfolio/src/components/`. |
 | `ShaderLab/handoff/shader-background.css` | Its three CSS rules. Append to `Portfolio/src/App.css` next to `.case-study-image`. |
 

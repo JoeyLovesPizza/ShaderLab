@@ -31,8 +31,12 @@ export const UNIFORMS = {
   u_massKind: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
   u_massStart: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
   u_massEnd: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
+  u_massCtrl1: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
+  u_massCtrl2: { kind: 'array', components: 2, count: MAX_MASSES, default: zeros(2 * MAX_MASSES) },
   u_massLabStart: { kind: 'array', components: 3, count: MAX_MASSES, default: zeros(3 * MAX_MASSES) },
   u_massLabEnd: { kind: 'array', components: 3, count: MAX_MASSES, default: zeros(3 * MAX_MASSES) },
+  /** A ridge's ramp as the field too: mix of the base toward the ramp across the chord. */
+  u_massFieldMix: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
   // Depth stack, in order. An amount below zero means the layer is off.
   // Light: the card's height (0..1, or off), and the family's one light.
   u_light: { kind: 'float', default: -1 },

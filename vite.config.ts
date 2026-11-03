@@ -99,6 +99,12 @@ function presetWriter(): Plugin {
             await writeFile(resolve(root, 'out', `card-${id}.png`), body)
             return ok(`out/card-${id}.png`)
           }
+          if (kind === 'webm') {
+            // EBML header: 1A 45 DF A3.
+            if (body.length < 4 || body.readUInt32BE(0) !== 0x1a45dfa3) return fail(400, 'body is not a WebM')
+            await writeFile(resolve(root, 'out', `card-${id}.webm`), body)
+            return ok(`out/card-${id}.webm`)
+          }
           if (kind === 'json') {
             const json = JSON.parse(body.toString('utf8')) as Record<string, unknown>
             if (json.id !== id) return fail(400, 'preset id in the body does not match the URL')

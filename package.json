@@ -18,7 +18,8 @@
     "dialkit": "2.0.2",
     "motion": "^12.43.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "webm-muxer": "5.1.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",

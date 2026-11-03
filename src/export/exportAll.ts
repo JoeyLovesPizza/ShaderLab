@@ -7,6 +7,7 @@ import { cardStateFrom, stage } from '../shader/stage'
 import { download } from './download'
 import { API_BASE, whenProbed } from './mode'
 import { exportPng } from './png'
+import { WEBM_UNSUPPORTED, canExportWebm, exportWebm } from './webm'
 import { presetFromCard, serializePreset } from './preset'
 
 /*
@@ -30,6 +31,8 @@ interface Background {
   preset: string
   shadowColor: string
   palette: string
+  /** The loop as H.264 MP4, when a WebM was exported (ship.mjs transcodes it). */
+  video?: string
 }
 
 async function post(url: string, body: Blob | string, type: string): Promise<string> {
@@ -72,7 +75,7 @@ function paletteNote(preset: Preset): string {
 
 export async function exportCards(
   presets: Preset[],
-  options: { manifest?: boolean } = {},
+  options: { manifest?: boolean; webm?: boolean } = {},
   onProgress?: (line: ExportLine) => void,
 ): Promise<ExportLine[]> {
   const lines: ExportLine[] = []
@@ -101,6 +104,25 @@ export async function exportCards(
         const jsonPath = await post(`${API_BASE}/export/${encodeURIComponent(preset.id)}/json`, json, 'application/json')
         line.message = `${pngPath} (${size}), ${jsonPath}`
       }
+      // The WebM loop, when asked for and the browser can encode it: the
+      // slow part, so its progress goes out as it runs.
+      if (options.webm) {
+        if (!canExportWebm()) throw new Error(WEBM_UNSUPPORTED)
+        const started = performance.now()
+        const webm = await exportWebm(preset, state, {
+          scale: 2,
+          onProgress: (f) => onProgress?.({ id: preset.id, ok: true, message: `encoding WebM ${Math.round(f * 100)}%` }),
+        })
+        const took = `${((performance.now() - started) / 1000).toFixed(1)} s, ${(webm.size / 1_048_576).toFixed(1)} MB`
+        if (isStatic) {
+          download(webm, `card-${preset.id}.webm`)
+          await new Promise((r) => setTimeout(r, 250))
+          line.message += `, downloaded card-${preset.id}.webm (${took})`
+        } else {
+          const webmPath = await post(`${API_BASE}/export/${encodeURIComponent(preset.id)}/webm`, webm, 'video/webm')
+          line.message += `, ${webmPath} (${took})`
+        }
+      }
       backgrounds.push({
         id: preset.id,
         name: preset.meta.name,
@@ -108,6 +130,7 @@ export async function exportCards(
         preset: `/shaders/${preset.id}.json`,
         shadowColor: meanColor(preset, draft.loop.stillTime),
         palette: paletteNote(preset),
+        ...(options.webm ? { video: `/work/shaders/card-${preset.id}.mp4` } : {}),
       })
       line.ok = true
     } catch (err) {
@@ -139,5 +162,5 @@ export async function exportCards(
 }
 
 /** Export all: the whole library plus the manifest. */
-export const exportAll = (presets: Preset[], onProgress?: (line: ExportLine) => void) =>
-  exportCards(presets, { manifest: true }, onProgress)
+export const exportAll = (presets: Preset[], onProgress?: (line: ExportLine) => void, webm = false) =>
+  exportCards(presets, { manifest: true, webm }, onProgress)

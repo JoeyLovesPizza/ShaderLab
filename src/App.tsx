@@ -80,6 +80,8 @@ export default function App() {
   const [renaming, setRenaming] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exporting, setExporting] = useState(false)
+  // Export all adds the WebM loop of every card when this is on (slow).
+  const [withWebm, setWithWebm] = useState(false)
   // The panel's boundary: a throw inside it is reported here, and Reopen
   // mounts the panel afresh under a new key.
   const [panelError, setPanelError] = useState<string | null>(null)
@@ -232,7 +234,7 @@ export default function App() {
   const onExportAll = async () => {
     setExporting(true)
     setNotice('Exporting…')
-    const lines = await exportAll(cards, (line) => setNotice(`${line.id}: ${line.message}`))
+    const lines = await exportAll(cards, (line) => setNotice(`${line.id}: ${line.message}`), withWebm)
     const failed = lines.filter((l) => !l.ok)
     setNotice(
       failed.length
@@ -309,6 +311,16 @@ export default function App() {
         </button>
         <button type="button" className="pill pill--primary" onClick={onExportAll} disabled={exporting}>
           {exporting ? 'Exporting…' : 'Export all'}
+        </button>
+        <button
+          type="button"
+          className="pill"
+          aria-pressed={withWebm}
+          disabled={exporting}
+          onClick={() => setWithWebm((w) => !w)}
+          title="Export all also encodes each card's WebM loop (VP9, 2×); Chrome or Edge only"
+        >
+          {withWebm ? 'WebM: on' : 'WebM: off'}
         </button>
         {renaming !== null && (
           <form

@@ -4,7 +4,8 @@ import type { CardHandle } from '../shader/handle'
 import { exportPng } from '../export/png'
 import { presetFromCard, serializePreset } from '../export/preset'
 import { download } from '../export/download'
-import { canExportWebm } from '../export/webm'
+import { WEBM_UNSUPPORTED, canExportWebm, exportWebm } from '../export/webm'
+import { API_BASE, whenProbed } from '../export/mode'
 import { validatePreset } from '../model/validate'
 import { getFamily } from '../model/family'
 import { cardStateFrom } from '../shader/stage'
@@ -12,9 +13,10 @@ import { cardStateFrom } from '../shader/stage'
 /*
  * The Export sheet, over Focus (SPEC.md §6). Poster frame, loop length and
  * formats; Export writes the files the browser can give us (PNG at 2×, the
- * preset JSON), named `card-<project>`. WebM waits on the WebCodecs path.
- * Done closes the sheet with the card untouched: nothing here writes back
- * into the panel.
+ * preset JSON, the WebM loop), named `card-<id>`. PNG and JSON download;
+ * the WebM goes to out/ through the dev server, and downloads in the
+ * hosted build. Done closes the sheet with the card untouched: nothing
+ * here writes back into the panel.
  */
 
 interface ExportSheetProps {
@@ -29,11 +31,13 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
   const [loopSeconds, setLoopSeconds] = useState(state.loopSeconds)
   const [png, setPng] = useState(true)
   const [json, setJson] = useState(true)
+  const [webm, setWebm] = useState(false)
   const [status, setStatus] = useState<string[]>([])
+  const [progress, setProgress] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const project = preset.meta.project ?? preset.id
-  const webm = canExportWebm()
+  const webmOk = canExportWebm()
 
   const run = async () => {
     setBusy(true)
@@ -47,10 +51,10 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
         setStatus(lines)
         return
       }
+      // The idle state, whatever the switcher shows: the exported poster
+      // never carries a hover or active lift.
+      const idle = cardStateFrom(result.value, handle.getDraft(), getFamily())
       if (png) {
-        // The idle state, whatever the switcher shows: the exported poster
-        // never carries a hover or active lift.
-        const idle = cardStateFrom(result.value, handle.getDraft(), getFamily())
         const blob = await exportPng(result.value, idle, { scale: 2, time: stillTime })
         download(blob, `card-${project}.png`)
         lines.push(`card-${project}.png (${result.value.canvas.width * 2} × ${result.value.canvas.height * 2})`)
@@ -60,10 +64,33 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
         download(blob, `card-${project}.json`)
         lines.push(`card-${project}.json`)
       }
+      if (webm) {
+        const started = performance.now()
+        const blob = await exportWebm(result.value, { ...idle, loopSeconds }, {
+          scale: 2,
+          onProgress: (f) => setProgress(`Encoding WebM… ${Math.round(f * 100)}%`),
+        })
+        const seconds = ((performance.now() - started) / 1000).toFixed(1)
+        const mb = (blob.size / 1_048_576).toFixed(1)
+        if (await whenProbed()) {
+          download(blob, `card-${project}.webm`)
+          lines.push(`card-${project}.webm (${mb} MB, ${seconds} s)`)
+        } else {
+          const response = await fetch(`${API_BASE}/export/${encodeURIComponent(preset.id)}/webm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'video/webm' },
+            body: blob,
+          })
+          if (!response.ok) throw new Error((await response.text().catch(() => '')) || response.statusText)
+          const { path } = (await response.json()) as { path: string }
+          lines.push(`${path} (${mb} MB, ${seconds} s)`)
+        }
+      }
       lines.push(`Copy into Portfolio: cp ~/Downloads/card-${project}.* ../Portfolio/public/shaders/`)
     } catch (err) {
       lines.push(`Export failed: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
+      setProgress(null)
       setStatus(lines)
       setBusy(false)
     }
@@ -102,13 +129,14 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
         <label>
           <input type="checkbox" checked={json} onChange={(e) => setJson(e.target.checked)} /> Preset JSON
         </label>
-        <label className="is-disabled">
-          <input type="checkbox" checked={false} disabled /> WebM loop
-          <small>{webm ? 'WebCodecs is here; the encoder path lands tomorrow.' : 'No WebCodecs in this browser.'}</small>
+        <label className={webmOk ? undefined : 'is-disabled'}>
+          <input type="checkbox" checked={webm && webmOk} disabled={!webmOk} onChange={(e) => setWebm(e.target.checked)} /> WebM loop
+          <small>{webmOk ? `VP9 at 2×, ${preset.loop.fps} fps, ${loopSeconds} s` : WEBM_UNSUPPORTED}</small>
         </label>
       </fieldset>
-      {status.length > 0 && (
+      {(status.length > 0 || progress) && (
         <ul className="sheet__status">
+          {progress && <li>{progress}</li>}
           {status.map((line, i) => (
             <li key={i}>{line}</li>
           ))}
@@ -118,7 +146,7 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
         <button type="button" className="pill" onClick={onDone}>
           Done
         </button>
-        <button type="button" className="pill pill--primary" onClick={run} disabled={busy || (!png && !json)}>
+        <button type="button" className="pill pill--primary" onClick={run} disabled={busy || (!png && !json && !webm)}>
           {busy ? 'Exporting…' : 'Export'}
         </button>
       </div>

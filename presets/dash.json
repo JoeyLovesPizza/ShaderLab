@@ -76,6 +76,14 @@
       "kind": "blob",
       "locked": false,
       "path": {
+        "control1": {
+          "x": 0.25,
+          "y": -0.05
+        },
+        "control2": {
+          "x": 0.25,
+          "y": -0.05
+        },
         "end": {
           "x": 0.65,
           "y": 0.15
@@ -91,6 +99,7 @@
           "hue": 350,
           "value": 0.84
         },
+        "fieldMix": 0,
         "start": {
           "chroma": 0.07,
           "hue": 350,
@@ -110,6 +119,14 @@
       "kind": "blob",
       "locked": false,
       "path": {
+        "control1": {
+          "x": 1.15,
+          "y": 0.8
+        },
+        "control2": {
+          "x": 1.15,
+          "y": 0.8
+        },
         "end": {
           "x": 1.55,
           "y": 1.0
@@ -125,6 +142,7 @@
           "hue": 300,
           "value": 0.24
         },
+        "fieldMix": 0,
         "start": {
           "chroma": 0.06,
           "hue": 300,

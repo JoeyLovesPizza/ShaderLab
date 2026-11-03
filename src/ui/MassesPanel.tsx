@@ -116,9 +116,12 @@ function massConfig(mass: Mass, _family: Family) {
     distance: slider(mass.distance, 0, 1, 0.01),
     locked: mass.locked,
     start: pad(mass.path.start),
+    control1: pad(mass.path.control1),
+    control2: pad(mass.path.control2),
     end: pad(mass.path.end),
     colorStart: oklchToHex(mass.ramp.start.hue, mass.ramp.start.value, mass.ramp.start.chroma),
     colorEnd: oklchToHex(mass.ramp.end.hue, mass.ramp.end.value, mass.ramp.end.chroma),
+    fieldMix: slider(mass.ramp.fieldMix, 0, 1, 0.01),
   }
 }
 
@@ -242,8 +245,10 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
     const m = folder(massesV, MASS_KEYS[i])
     const was = current.masses[i] ?? current.masses[current.masses.length - 1] ?? SPARE_MASS
     const pos = isValues(m.position) ? m.position : {}
-    const start = isValues(m.start) ? m.start : {}
-    const end = isValues(m.end) ? m.end : {}
+    const point = (key: string, was: { x: number; y: number }) => {
+      const p = isValues(m[key]) ? (m[key] as Values) : {}
+      return { x: num(p, 'x', was.x), y: num(p, 'y', was.y) }
+    }
     const offset = num(m, 'value', 0)
     const colour = (key: string, was: { hue: number; value: number; chroma: number }) =>
       colourToOklch(typeof m[key] === 'string' ? (m[key] as string) : oklchToHex(was.hue, was.value, was.chroma), offset, was)
@@ -257,10 +262,12 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
       distance: num(m, 'distance', was.distance),
       locked: bool(m, 'locked', was.locked),
       path: {
-        start: { x: num(start, 'x', was.path.start.x), y: num(start, 'y', was.path.start.y) },
-        end: { x: num(end, 'x', was.path.end.x), y: num(end, 'y', was.path.end.y) },
+        start: point('start', was.path.start),
+        control1: point('control1', was.path.control1),
+        control2: point('control2', was.path.control2),
+        end: point('end', was.path.end),
       },
-      ramp: { start: colour('colorStart', was.ramp.start), end: colour('colorEnd', was.ramp.end) },
+      ramp: { start: colour('colorStart', was.ramp.start), end: colour('colorEnd', was.ramp.end), fieldMix: num(m, 'fieldMix', was.ramp.fieldMix) },
     })
   }
   const shadow = layer('shadow')
@@ -361,9 +368,12 @@ function valuesFromDraft(draft: CardDraft): Values {
       distance: m.distance,
       locked: m.locked,
       start: { x: m.path.start.x, y: m.path.start.y },
+      control1: { x: m.path.control1.x, y: m.path.control1.y },
+      control2: { x: m.path.control2.x, y: m.path.control2.y },
       end: { x: m.path.end.x, y: m.path.end.y },
       colorStart: oklchToHex(m.ramp.start.hue, m.ramp.start.value, m.ramp.start.chroma),
       colorEnd: oklchToHex(m.ramp.end.hue, m.ramp.end.value, m.ramp.end.chroma),
+      fieldMix: m.ramp.fieldMix,
     }
   })
   const d = draft.depth
