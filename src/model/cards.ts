@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { getFamily } from './family'
 import { PRESETS, blankPreset } from './presets'
 import type { CardDraft, Preset } from './types'
+import { migrateOverlay } from './validate'
 
 /*
  * Every card's working copy, as one store. The preset files are the source
@@ -35,7 +36,6 @@ try {
 } catch {
   // Storage blocked: nothing stale to clear.
 }
-const DRAFT_KEYS: (keyof CardDraft)[] = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'finish', 'captionMask', 'loop']
 
 export function draftOf(preset: Preset): CardDraft {
   return structuredClone({
@@ -74,16 +74,35 @@ const baselines = new Map<string, CardDraft>(PRESETS.map((p) => [p.id, draftOf(p
 const drafts = new Map<string, CardDraft>(PRESETS.map((p) => [p.id, draftOf(p)]))
 const listeners = new Set<() => void>()
 
+// Only the bones: an overlay from an older build lacks the keys added
+// since (finish, light, strokes), and the migration fills them in.
 function looksLikeDraft(value: unknown): value is CardDraft {
-  return typeof value === 'object' && value !== null && DRAFT_KEYS.every((k) => k in (value as object))
+  return typeof value === 'object' && value !== null && 'masses' in value && 'base' in value
 }
 
-// Overlays from the last session, applied over the files where they still
-// make sense. Anything unreadable is dropped rather than trusted.
+/** An overlay through the validator's migration, over the card's file;
+    null (with a warning) when it cannot be made current. */
+export function migrateDraft(preset: Preset, overlay: unknown): CardDraft | null {
+  const migrated = migrateOverlay(preset, overlay)
+  if (!migrated) {
+    console.warn(`[ShaderLab] dropping the stored overlay for "${preset.id}": it no longer validates; the file stands`)
+    return null
+  }
+  for (const w of migrated.warnings) console.warn(`[ShaderLab] overlay for "${preset.id}": ${w.path}: ${w.message}`)
+  return migrated.draft
+}
+
+// Overlays from the last session, each migrated like a file would be
+// (an overlay written by an earlier build lacks the fields added since),
+// applied over the files where they still validate. Anything unreadable
+// is dropped rather than trusted.
 try {
   const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>
   for (const [id, overlay] of Object.entries(stored)) {
-    if (baselines.has(id) && looksLikeDraft(overlay)) drafts.set(id, overlay)
+    const preset = PRESETS.find((p) => p.id === id)
+    if (!preset || !looksLikeDraft(overlay)) continue
+    const draft = migrateDraft(preset, overlay)
+    if (draft) drafts.set(id, draft)
   }
 } catch {
   // Storage blocked or garbage: the files it is.

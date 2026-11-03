@@ -8,6 +8,7 @@ import {
   MAX_MASSES,
   STRUCTURE_LAYERS,
   STRUCTURE_MODES,
+  type CardDraft,
   type Family,
   type Mass,
   type Preset,
@@ -494,3 +495,24 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
 export const clampTo = (v: number, [min, max]: Range) => Math.min(max, Math.max(min, v))
 
 export const describe = (issues: ValidationIssue[]) => issues.map((i) => `${i.path || '(root)'}: ${i.message}`).join('; ')
+
+const DRAFT_KEYS = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'finish', 'captionMask', 'loop'] as const
+
+/**
+ * An overlay (a card's draft from localStorage, or a library card) is a
+ * file from an earlier session: it goes through the same validation and
+ * migration as a file, laid over the card's own preset. The draft that
+ * comes back has every field the current schema has; nothing renders or
+ * packs a draft that has not been through here. Null when it still does
+ * not validate, so the caller falls back to the file.
+ */
+export function migrateOverlay(preset: Preset, overlay: unknown): { draft: CardDraft; warnings: ValidationIssue[] } | null {
+  if (!isObj(overlay)) return null
+  const candidate: Obj = { ...(preset as unknown as Obj) }
+  for (const key of DRAFT_KEYS) if (overlay[key] !== undefined) candidate[key] = overlay[key]
+  const result = validatePreset(candidate)
+  if (!result.ok) return null
+  const p = result.value as unknown as Obj
+  const draft = Object.fromEntries(DRAFT_KEYS.map((k) => [k, p[k]])) as unknown as CardDraft
+  return { draft: structuredClone(draft), warnings: result.warnings }
+}

@@ -1,4 +1,4 @@
-import type { CardDraft, Preset } from '../model/types'
+import { withMassShape, type CardDraft, type Preset } from '../model/types'
 
 /**
  * The preset as the card now is: the draft (seed, modes, base, masses,
@@ -13,7 +13,7 @@ export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTi
     seed: draft.seed,
     modes: { ...draft.modes },
     base: { ...draft.base, hue: r(draft.base.hue, 1), value: r(draft.base.value), chroma: r(draft.base.chroma) },
-    masses: draft.masses.map((m) => ({
+    masses: draft.masses.map(withMassShape).map((m) => ({
       ...m,
       hue: r(m.hue, 1),
       value: r(m.value),

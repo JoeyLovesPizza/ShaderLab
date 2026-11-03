@@ -44,7 +44,7 @@ export const DEFAULT_FAMILY: Family = {
     strokes: { on: false, allowed: true, amount: [0.01, 0.03], length: 0.4, density: 150 },
     shadow: { on: false, allowed: false, amount: [0.3, 0.7] },
   },
-  meta: { name: 'built-in fallback', created: '2026-10-28', version: 4 },
+  meta: { name: 'built-in fallback', created: '2026-10-28', version: 5 },
 }
 
 /** The load error, when family.json failed and the fallback is in use. */

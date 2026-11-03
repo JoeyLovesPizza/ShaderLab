@@ -28,6 +28,7 @@ import {
   type Mass,
   MASS_KINDS,
   blobMass,
+  withMassShape,
   type Modes,
   type Preset,
   type StateName,
@@ -105,7 +106,8 @@ const pad = (p: { x: number; y: number }) => ({
  * width, coloured Start → colour → End along it. One Value offset lifts
  * all three colours.
  */
-function massConfig(mass: Mass, _family: Family) {
+function massConfig(raw: Mass, _family: Family) {
+  const mass = withMassShape(raw)
   return {
     kind: select(MASS_KINDS, mass.kind),
     color: oklchToHex(mass.hue, mass.value, mass.chroma),
@@ -243,7 +245,7 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
   const masses: Mass[] = []
   for (let i = 0; i < count; i++) {
     const m = folder(massesV, MASS_KEYS[i])
-    const was = current.masses[i] ?? current.masses[current.masses.length - 1] ?? SPARE_MASS
+    const was = withMassShape(current.masses[i] ?? current.masses[current.masses.length - 1] ?? SPARE_MASS)
     const pos = isValues(m.position) ? m.position : {}
     const point = (key: string, was: { x: number; y: number }) => {
       const p = isValues(m[key]) ? (m[key] as Values) : {}
@@ -356,8 +358,9 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
 function valuesFromDraft(draft: CardDraft): Values {
   const masses: Values = { count: draft.masses.length }
   MASS_KEYS.forEach((key, i) => {
-    const m = draft.masses[i]
-    if (!m) return
+    const raw = draft.masses[i]
+    if (!raw) return
+    const m = withMassShape(raw)
     masses[key] = {
       kind: m.kind,
       color: oklchToHex(m.hue, m.value, m.chroma),

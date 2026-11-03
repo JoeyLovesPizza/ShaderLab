@@ -39,6 +39,33 @@ if (!url) {
 const errors = []
 const browser = await chromium.launch({ headless: true, args: ['--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] })
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } })
+
+// A stale overlay from an earlier build, seeded before the app loads: the
+// first card's draft in the shape before ridges (no kind, path or ramp on
+// its masses, no light or strokes layers), with the family version already
+// noted so the one-time clear does not hide it. The app must migrate it
+// (the card shows "modified"), with no console error.
+const { readFile } = await import('node:fs/promises')
+const familyVersion = JSON.parse(await readFile(resolve(root, 'presets/family.json'), 'utf8')).meta.version
+const presetFiles = (await import('node:fs')).readdirSync(resolve(root, 'presets')).filter((f) => f.endsWith('.json') && f !== 'family.json').sort()
+const stalePreset = JSON.parse(await readFile(resolve(root, 'presets', presetFiles[0]), 'utf8'))
+const stale = {
+  seed: stalePreset.seed + 1,
+  modes: stalePreset.modes,
+  base: stalePreset.base,
+  masses: stalePreset.masses.map(({ kind: _k, path: _p, ramp: _r, ...m }) => m),
+  texture: stalePreset.texture,
+  depth: Object.fromEntries(Object.entries(stalePreset.depth).filter(([k]) => k !== 'light' && k !== 'strokes')),
+  captionMask: stalePreset.captionMask,
+  loop: stalePreset.loop,
+}
+await page.addInitScript(
+  ({ id, overlay, version }) => {
+    localStorage.setItem('shaderlab:familyVersion', String(version))
+    localStorage.setItem('shaderlab:overlays', JSON.stringify({ [id]: overlay }))
+  },
+  { id: stalePreset.id, overlay: stale, version: familyVersion },
+)
 page.on('console', (m) => m.type() === 'error' && errors.push(`console.error: ${m.text()}`))
 page.on('pageerror', (e) => errors.push(`uncaught: ${e.message}`))
 
@@ -100,6 +127,10 @@ await step('load', async () => {
   await page.locator('.cell').first().waitFor({ timeout: STEP_MS })
   await page.locator('.dialkit-panel').first().waitFor({ timeout: STEP_MS })
   await alerts()
+})
+await step(`a stale overlay for ${stalePreset.id} migrated (modified badge, no error)`, async () => {
+  const badge = page.locator('.cell', { hasText: stalePreset.meta.name }).locator('.cell__badge')
+  if ((await badge.count()) === 0) throw new Error(`${stalePreset.id} shows no modified badge: the seeded overlay was dropped or ignored`)
 })
 const n = await count('.cell')
 const badgesAtStart = await count('.cell__badge')

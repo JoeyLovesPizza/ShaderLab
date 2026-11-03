@@ -21,6 +21,7 @@ A generator for animated shader backgrounds for the Portfolio carousel cards (`.
 - No semicolons, single quotes, 2-space indent, named exports (`App` is the only default), comments explain why. Same as Portfolio.
 - Never commit fonts, asset masters or anything under `out/` or `reference/`. `.claude/settings.local.json` and `.claude/worktrees/` are ignored.
 - Every rendering change reports fps at six thumbnails plus one focused card on this Mac.
+- Every preset schema change (a field added, renamed, reshaped, in `types.ts`) ships with three things: a migration in `validate.ts` (`withDefaults` / `withMassDefaults`, so an older file or overlay loads with a warning, never as invalid), a bump of `meta.version` in `presets/family.json` and `DEFAULT_FAMILY` (the card store clears stale localStorage overlays once on the next load), and a case in `tests/model/overlay.test.ts` for the shape being left behind. Overlays and library cards go through `migrateOverlay` on every load; nothing renders a draft that has not passed the validator.
 
 ## Roles
 Planner holds SPEC.md, sequences the work and is the only agent that talks to Joe. Critic reviews each step against SPEC.md §2 and every preset on the Portfolio page. Builder executes one phase step at a time against the reuse map in SPEC.md §5.

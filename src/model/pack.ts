@@ -1,7 +1,7 @@
 import { oklchToLab } from '../palette/ramp'
 import { MAX_MASSES, defaultUniforms, type UniformValues } from '../shader/massesManifest'
 import { mulberry32 } from './shuffle'
-import type { CardDraft, Family } from './types'
+import { withMassShape, type CardDraft, type Family } from './types'
 
 /*
  * A card's draft plus the family, as the uniforms `masses@1` reads. All
@@ -56,7 +56,8 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   const labStart: number[] = []
   const labEnd: number[] = []
   const fieldMix: number[] = []
-  masses.forEach((mass, i) => {
+  masses.forEach((raw, i) => {
+    const mass = withMassShape(raw)
     lab.push(...oklchToLab(mass.hue, mass.value, mass.chroma))
     pos.push(mass.x, mass.y)
     params.push(mass.size * aspect, mass.softness, mass.distance, phases[i])

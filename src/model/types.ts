@@ -70,6 +70,29 @@ export function blobMass(m: Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
   }
 }
 
+/**
+ * A mass as the shader and the panel need it, whatever shape it arrived
+ * in: a mass from an overlay written before kinds, paths or ramps existed
+ * gets the blob defaults for what it lacks. Belt and braces under the
+ * validator, which migrates every overlay on load.
+ */
+export function withMassShape(m: Partial<Mass> & Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
+  const blob = blobMass(m)
+  const path = m.path ?? blob.path
+  const ramp = m.ramp ?? blob.ramp
+  return {
+    ...blob,
+    kind: m.kind === 'ridge' ? 'ridge' : 'blob',
+    path: {
+      start: path.start ?? blob.path.start,
+      control1: path.control1 ?? (path as Partial<Mass['path']>).control2 ?? { x: m.x, y: m.y },
+      control2: path.control2 ?? (path as Partial<Mass['path']>).control1 ?? { x: m.x, y: m.y },
+      end: path.end ?? blob.path.end,
+    },
+    ramp: { start: ramp.start ?? blob.ramp.start, end: ramp.end ?? blob.ramp.end, fieldMix: ramp.fieldMix ?? 0 },
+  }
+}
+
 export interface DepthLayer {
   on: boolean
   amount: number
