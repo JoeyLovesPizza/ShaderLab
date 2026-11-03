@@ -72,7 +72,7 @@ function checkLayer(issues: Issues, value: unknown, path: string) {
 
 /** Depth parameters added after the first files; filled when missing. */
 const SWIRL_SCALE_DEFAULT = 0.6
-const STROKES_DEFAULT = { direction: 20, followAngle: true, length: 0.4, density: 150, motion: 0.5 }
+const STROKES_DEFAULT = { direction: 20, followAngle: true, size: 0.35, density: 14, taper: 0.25, chaos: 0, follow: 0.3, motion: 0.5 }
 
 /** Fields added after the first files were written take their defaults
     when missing, so an older file still loads as it did. */
@@ -89,7 +89,7 @@ const LAYER_DEFAULT: Record<string, Obj> = {
   haze: { on: false, amount: 0 },
   swirl: { on: false, amount: 0, scale: 0.6 },
   relief: { on: false, amount: 0, frequency: 85, twist: 6 },
-  strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, length: 0.4, density: 150, motion: 0.5 },
+  strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, size: 0.35, density: 14, taper: 0.25, chaos: 0, follow: 0.3, motion: 0.5 },
   shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
 }
 
@@ -123,9 +123,21 @@ function withDefaults(input: Obj, warnings: Issues): Obj {
     if (isObj(depth.swirl) && depth.swirl.scale === undefined) depth.swirl = { ...depth.swirl, scale: SWIRL_SCALE_DEFAULT }
     if (isObj(depth.strokes)) {
       // followField (2026-11-02, one round) is gone: strokes keep a direction.
-      const { followField: _followField, ...strokes } = depth.strokes
+      const { followField: _followField, length, ...strokes } = depth.strokes
       if (_followField !== undefined) warnings.add('depth.strokes.followField', 'no longer exists; the key was ignored')
-      depth.strokes = { ...STROKES_DEFAULT, ...strokes }
+      // The fibre model (2026-11-02/03) had a fibre length and fibres per
+      // height; marks have a size and cells per width. The length carries
+      // over as the mark size; the old density does not translate.
+      const marks: Obj = { ...STROKES_DEFAULT, ...strokes }
+      if (length !== undefined && strokes.size === undefined) {
+        marks.size = length
+        warnings.add('depth.strokes.length', 'is now size (a mark\'s length in card widths)')
+      }
+      if (isNum(strokes.density) && strokes.density > 60) {
+        marks.density = STROKES_DEFAULT.density
+        warnings.add('depth.strokes.density', 'was fibres per height; read as the default cells per width')
+      }
+      depth.strokes = marks
     }
     for (const key of Object.keys(out.depth)) {
       if (!(DEPTH_ORDER as readonly string[]).includes(key)) {
@@ -304,8 +316,11 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
       if (layer === 'strokes') {
         issues.num(v, 'direction', 'depth.strokes', -360, 360)
         issues.bool(v, 'followAngle', 'depth.strokes')
-        issues.num(v, 'length', 'depth.strokes', 0.05, 2)
-        issues.num(v, 'density', 'depth.strokes', 5, 400)
+        issues.num(v, 'size', 'depth.strokes', 0.05, 2)
+        issues.num(v, 'density', 'depth.strokes', 2, 60)
+        issues.num(v, 'taper', 'depth.strokes', 0, 0.5)
+        issues.num(v, 'chaos', 'depth.strokes', 0, 1)
+        issues.num(v, 'follow', 'depth.strokes', 0, 1)
         issues.num(v, 'motion', 'depth.strokes', 0, 1)
       }
       if (layer === 'shadow') {
@@ -459,7 +474,7 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
     // Layers added after the first families take SPEC.md's defaults.
     const depth: Obj = {
       light: { on: true, allowed: true, amount: [1, 2] },
-      strokes: { on: false, allowed: true, amount: [0.01, 0.03], length: 0.4, density: 150 },
+      strokes: { on: false, allowed: true, amount: [0.01, 0.03], size: 0.35, density: 14 },
       ...input.depth,
     }
     if (isObj(depth.swirl) && depth.swirl.scale === undefined) depth.swirl = { ...depth.swirl, scale: SWIRL_SCALE_DEFAULT }
@@ -479,8 +494,11 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
         issues.num(v, 'twist', 'depth.relief', -90, 90)
       }
       if (layer === 'strokes') {
-        issues.num(v, 'length', 'depth.strokes', 0.05, 2)
-        issues.num(v, 'density', 'depth.strokes', 5, 400)
+        // Older families carried a fibre length and density.
+        if (v.size === undefined) v.size = isNum(v.length) ? v.length : 0.35
+        if (!isNum(v.density) || v.density > 60) v.density = 14
+        issues.num(v, 'size', 'depth.strokes', 0.05, 2)
+        issues.num(v, 'density', 'depth.strokes', 2, 60)
       }
     }
   }

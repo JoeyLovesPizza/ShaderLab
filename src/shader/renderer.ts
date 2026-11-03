@@ -75,8 +75,8 @@ if (import.meta.hot) {
 }
 
 const FIELD_FIXED = ['u_resolution', 'u_time', 'u_loopSeconds'] as const
-const FINAL_FIXED = ['u_src', 'u_frame', 'u_grain', 'u_grainSeed', 'u_grainAnimate'] as const
-const BLUR_FIXED = ['u_src', 'u_orig', 'u_texel', 'u_dir', 'u_lengthPx', 'u_sigmaPx', 'u_mode', 'u_intensity', 'u_seed'] as const
+const FINAL_FIXED = ['u_src', 'u_frame', 'u_grain', 'u_grainSeed', 'u_grainAnimate', 'u_strokesOn'] as const
+const BLUR_FIXED = ['u_src', 'u_orig', 'u_texel', 'u_dir', 'u_lengthPx', 'u_sigmaPx', 'u_mode', 'u_intensity', 'u_seed', 'u_strokesOn'] as const
 
 function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
   const shader = gl.createShader(type)
@@ -271,6 +271,8 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
     gl.uniform1i(blur.loc.get('u_mode') ?? null, mode)
     gl.uniform1f(blur.loc.get('u_intensity') ?? null, intensity)
     gl.uniform1f(blur.loc.get('u_seed') ?? null, num('u_grainSeed'))
+    // With marks on, the field's alpha carries each pixel's mark angle.
+    gl.uniform1f(blur.loc.get('u_strokesOn') ?? null, num('u_strokes') >= 0 ? 1 : 0)
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
 
@@ -353,6 +355,7 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
       gl.uniform1f(final.loc.get('u_grain') ?? null, num('u_grain'))
       gl.uniform1f(final.loc.get('u_grainSeed') ?? null, num('u_grainSeed'))
       gl.uniform1f(final.loc.get('u_grainAnimate') ?? null, num('u_grainAnimate'))
+      gl.uniform1f(final.loc.get('u_strokesOn') ?? null, num('u_strokes') >= 0 ? 1 : 0)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
 
       if (q && timer) {

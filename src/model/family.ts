@@ -41,10 +41,10 @@ export const DEFAULT_FAMILY: Family = {
     haze: { on: true, allowed: true, amount: [0.1, 0.4] },
     swirl: { on: false, allowed: true, amount: [0.2, 0.4], scale: 0.6 },
     relief: { on: false, allowed: true, amount: [0.15, 0.35], frequency: 85, twist: 6 },
-    strokes: { on: false, allowed: true, amount: [0.01, 0.03], length: 0.4, density: 150 },
+    strokes: { on: false, allowed: true, amount: [0.01, 0.03], size: 0.35, density: 14 },
     shadow: { on: false, allowed: false, amount: [0.3, 0.7] },
   },
-  meta: { name: 'built-in fallback', created: '2026-10-28', version: 5 },
+  meta: { name: 'built-in fallback', created: '2026-10-28', version: 6 },
 }
 
 /** The load error, when family.json failed and the fallback is in use. */

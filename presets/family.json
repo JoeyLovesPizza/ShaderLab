@@ -64,9 +64,9 @@
         0.01,
         0.03
       ],
-      "density": 150,
-      "length": 0.4,
-      "on": false
+      "density": 14,
+      "on": false,
+      "size": 0.35
     },
     "swirl": {
       "allowed": true,
@@ -136,7 +136,7 @@
   "meta": {
     "created": "2026-10-28",
     "name": "masses@1 family (Critic defaults, SPEC.md \u00a74, 2026-10-28; Light and Strokes 2026-11-02)",
-    "version": 5
+    "version": 6
   },
   "motion": {
     "amount": 0.6,
