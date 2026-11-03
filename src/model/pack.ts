@@ -51,8 +51,11 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   const kind: number[] = []
   const start: number[] = []
   const end: number[] = []
+  const ctrl1: number[] = []
+  const ctrl2: number[] = []
   const labStart: number[] = []
   const labEnd: number[] = []
+  const fieldMix: number[] = []
   masses.forEach((mass, i) => {
     lab.push(...oklchToLab(mass.hue, mass.value, mass.chroma))
     pos.push(mass.x, mass.y)
@@ -61,8 +64,11 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
     kind.push(mass.kind === 'ridge' ? 1 : 0)
     start.push(mass.path.start.x, mass.path.start.y)
     end.push(mass.path.end.x, mass.path.end.y)
+    ctrl1.push(mass.path.control1.x, mass.path.control1.y)
+    ctrl2.push(mass.path.control2.x, mass.path.control2.y)
     labStart.push(...oklchToLab(mass.ramp.start.hue, mass.ramp.start.value, mass.ramp.start.chroma))
     labEnd.push(...oklchToLab(mass.ramp.end.hue, mass.ramp.end.value, mass.ramp.end.chroma))
+    fieldMix.push(mass.kind === 'ridge' ? mass.ramp.fieldMix : 0)
   })
   const fill = (arr: number[], n: number) => {
     while (arr.length < n) arr.push(0)
@@ -76,8 +82,11 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_massKind = fill(kind, MAX_MASSES)
   u.u_massStart = fill(start, 2 * MAX_MASSES)
   u.u_massEnd = fill(end, 2 * MAX_MASSES)
+  u.u_massCtrl1 = fill(ctrl1, 2 * MAX_MASSES)
+  u.u_massCtrl2 = fill(ctrl2, 2 * MAX_MASSES)
   u.u_massLabStart = fill(labStart, 3 * MAX_MASSES)
   u.u_massLabEnd = fill(labEnd, 3 * MAX_MASSES)
+  u.u_massFieldMix = fill(fieldMix, MAX_MASSES)
 
   const amount = (layer: { on: boolean; amount: number }) => (layer.on ? layer.amount : -1)
   const d = draft.depth

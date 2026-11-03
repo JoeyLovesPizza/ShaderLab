@@ -2,6 +2,7 @@
 /*
  * npm run ship: hands the last "Export all" to the Portfolio.
  *   out/card-<id>.png      ->  Portfolio/public/work/shaders/card-<id>.webp  (via cwebp)
+ *   out/card-<id>.webm     ->  Portfolio/public/work/shaders/card-<id>.webm and card-<id>.mp4 (via ffmpeg)
  *   out/<id>.json          ->  Portfolio/public/shaders/<id>.json
  *   handoff/backgrounds.json -> Portfolio/public/shaders/backgrounds.json
  * Creates the folders, prints every file it wrote, touches nothing under
@@ -26,7 +27,7 @@ const imgDir = resolve(portfolio, 'public', 'work', 'shaders')
 const jsonDir = resolve(portfolio, 'public', 'shaders')
 const show = (p) => p.replace(`${portfolio}/`, 'Portfolio/')
 
-const files = (await readdir(out)).filter((f) => f.endsWith('.png') || f.endsWith('.json'))
+const files = (await readdir(out)).filter((f) => f.endsWith('.png') || f.endsWith('.json') || f.endsWith('.webm'))
 if (files.length === 0) {
   console.log('out/ holds no .png or .json: run Export all in ShaderLab first')
   process.exit(1)
@@ -43,6 +44,14 @@ try {
   console.warn('cwebp not found (brew install webp); copying PNGs instead of WebP')
 }
 
+let hasFfmpeg = true
+try {
+  await run('ffmpeg', ['-version'])
+} catch {
+  hasFfmpeg = false
+  console.warn('ffmpeg not found (brew install ffmpeg); WebM loops are copied without an MP4')
+}
+
 let count = 0
 for (const file of files) {
   const src = resolve(out, file)
@@ -50,6 +59,18 @@ for (const file of files) {
     const target = resolve(jsonDir, file)
     await copyFile(src, target)
     console.log(`${file}  ->  ${show(target)}`)
+  } else if (file.endsWith('.webm')) {
+    // The loop: the WebM as it is, plus an H.264 MP4 (faststart, no audio)
+    // for Portfolio's VideoLoop, which QuickTime and Safari can play.
+    const target = resolve(imgDir, file)
+    await copyFile(src, target)
+    console.log(`${file}  ->  ${show(target)}`)
+    if (hasFfmpeg) {
+      const mp4 = resolve(imgDir, file.replace(/\.webm$/, '.mp4'))
+      await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-movflags', '+faststart', '-an', mp4])
+      console.log(`${file}  ->  ${show(mp4)}`)
+      count++
+    }
   } else if (hasCwebp) {
     const target = resolve(imgDir, file.replace(/\.png$/, '.webp'))
     await run('cwebp', ['-quiet', '-q', '88', '-m', '6', src, '-o', target])

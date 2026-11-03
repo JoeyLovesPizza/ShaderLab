@@ -188,8 +188,15 @@ function withMassDefaults(value: Obj): Obj {
   return {
     ...value,
     kind,
-    path: { start: path.start ?? { x: x - 0.4, y: y - 0.2 }, end: path.end ?? { x: x + 0.4, y: y + 0.2 } },
-    ramp: { start: ramp.start ?? { ...colour }, end: ramp.end ?? { ...colour } },
+    // The quadratic form (one round, 2026-11-02) had the mass position as
+    // its one control point: both cubic controls land there.
+    path: {
+      start: path.start ?? { x: x - 0.4, y: y - 0.2 },
+      control1: path.control1 ?? { x, y },
+      control2: path.control2 ?? path.control1 ?? { x, y },
+      end: path.end ?? { x: x + 0.4, y: y + 0.2 },
+    },
+    ramp: { start: ramp.start ?? { ...colour }, end: ramp.end ?? { ...colour }, fieldMix: ramp.fieldMix ?? 0 },
   }
 }
 
@@ -206,15 +213,15 @@ function checkMass(issues: Issues, value: unknown, path: string): value is Mass 
   issues.num(value, 'softness', path, 0, 1)
   issues.num(value, 'distance', path, 0, 1)
   issues.bool(value, 'locked', path)
-  if (!isObj(value.path)) issues.add(`${path}.path`, 'must be { start, end }')
+  if (!isObj(value.path)) issues.add(`${path}.path`, 'must be { start, control1, control2, end }')
   else {
-    checkPoint(issues, value.path.start, `${path}.path.start`)
-    checkPoint(issues, value.path.end, `${path}.path.end`)
+    for (const key of ['start', 'control1', 'control2', 'end']) checkPoint(issues, value.path[key], `${path}.path.${key}`)
   }
   if (!isObj(value.ramp) || !isObj(value.ramp.start) || !isObj(value.ramp.end)) issues.add(`${path}.ramp`, 'must be { start, end } colours')
   else {
     checkColour(issues, value.ramp.start, `${path}.ramp.start`)
     checkColour(issues, value.ramp.end, `${path}.ramp.end`)
+    issues.num(value.ramp, 'fieldMix', `${path}.ramp`, 0, 1)
   }
   return true
 }

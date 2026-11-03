@@ -31,10 +31,11 @@ export interface Point {
 
 /**
  * A soft mass of colour or shadow, lighter or darker than the base. A
- * `blob` falls off from a point; a `ridge` falls off from a quadratic
- * Bézier through `x, y` (its middle control point) between `path.start`
- * and `path.end`, coloured by a three-stop ramp along it (`ramp.start`,
- * the mass's own colour in the middle, `ramp.end`). Either feeds the
+ * `blob` falls off from `x, y`; a `ridge` falls off from a cubic Bézier
+ * (`path.start`, `control1`, `control2`, `end`), so its crest can
+ * inflect into an S, coloured by a three-stop ramp along it (`ramp.start`,
+ * the mass's own colour in the middle, `ramp.end`). A ridge's `x, y` only
+ * anchors its drift. Either feeds the
  * height field by its falloff, so a ridge's crest lifts and the light
  * shades its upper edge and underside.
  */
@@ -49,10 +50,11 @@ export interface Mass extends MassColour {
   /** 0 near, 1 far: nearer masses drift more under Parallax. */
   distance: number
   locked: boolean
-  /** Ridge only: the ends of the curve, card units. */
-  path: { start: Point; end: Point }
-  /** Ridge only: the colours at t 0 and t 1. */
-  ramp: { start: MassColour; end: MassColour }
+  /** Ridge only: the curve, card units. */
+  path: { start: Point; control1: Point; control2: Point; end: Point }
+  /** Ridge only: the colours at t 0 and t 1, and how far the ramp also
+      fills the field across the start→end chord (0: the crest alone). */
+  ramp: { start: MassColour; end: MassColour; fieldMix: number }
 }
 
 export const MASS_KINDS = ['blob', 'ridge'] as const
@@ -63,8 +65,8 @@ export function blobMass(m: Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
   return {
     ...m,
     kind: 'blob',
-    path: { start: { x: m.x - 0.4, y: m.y - 0.2 }, end: { x: m.x + 0.4, y: m.y + 0.2 } },
-    ramp: { start: { ...colour }, end: { ...colour } },
+    path: { start: { x: m.x - 0.4, y: m.y - 0.2 }, control1: { x: m.x, y: m.y }, control2: { x: m.x, y: m.y }, end: { x: m.x + 0.4, y: m.y + 0.2 } },
+    ramp: { start: { ...colour }, end: { ...colour }, fieldMix: 0 },
   }
 }
 

@@ -61,10 +61,13 @@ uniform vec2  u_massPos[4];    // card units: x 0..aspect, y 0..1, y up
 uniform vec4  u_massParams[4]; // size (height units), softness, distance, phase offset
 uniform float u_massOpacity[4];
 uniform float u_massKind[4];      // 0 blob, 1 ridge
-uniform vec2  u_massStart[4];     // a ridge's curve ends; u_massPos is its middle control point
+uniform vec2  u_massStart[4];     // a ridge's cubic Bezier: start, two controls, end
+uniform vec2  u_massCtrl1[4];
+uniform vec2  u_massCtrl2[4];
 uniform vec2  u_massEnd[4];
 uniform vec3  u_massLabStart[4];  // a ridge's ramp ends; u_massLab is its middle
 uniform vec3  u_massLabEnd[4];
+uniform float u_massFieldMix[4];  // a ridge's ramp as the field across its chord
 
 uniform float u_light;         // the card's height, 0..1; below zero means off
 uniform float u_lightAngle;    // degrees, the light's direction in the plane
@@ -215,6 +218,11 @@ float strokeFibres(float along, float across, float aspect) {
   return n / 1.35;
 }
 
+vec2 cubicAt(vec2 P0, vec2 C1, vec2 C2, vec2 P3, float t) {
+  float u = 1.0 - t;
+  return u * u * u * P0 + 3.0 * u * u * t * C1 + 3.0 * u * t * t * C2 + t * t * t * P3;
+}
+
 float roundedBox(vec2 q, vec2 halfSize, float r) {
   vec2 d = abs(q) - halfSize + r;
   return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
@@ -280,35 +288,49 @@ void main() {
     float dist;
     vec3 M;
     if (u_massKind[i] > 0.5) {
-      // A ridge: the nearest point on the quadratic Bezier from Start
-      // through c to End (24 samples of t), and the ramp's colour there.
+      // A ridge: the nearest point on the cubic Bezier (32 samples of t,
+      // then a ternary refinement so neither the distance nor the ramp
+      // steps from sample to sample), and the ramp's colour there. The
+      // whole curve drifts with the mass's anchor.
       vec2 drift = c - u_massPos[i];
       vec2 P0 = u_massStart[i] + drift;
-      vec2 P2 = u_massEnd[i] + drift;
+      vec2 C1 = u_massCtrl1[i] + drift;
+      vec2 C2 = u_massCtrl2[i] + drift;
+      vec2 P3 = u_massEnd[i] + drift;
       float best = 1e9;
       float bestT = 0.0;
       vec2 bestP = c;
-      for (int s = 0; s <= 24; s++) {
-        float t = float(s) / 24.0;
-        vec2 B = mix(mix(P0, c, t), mix(c, P2, t), t);
+      for (int s = 0; s <= 32; s++) {
+        float t = float(s) / 32.0;
+        vec2 B = cubicAt(P0, C1, C2, P3, t);
         vec2 dd = (q - B) * bow;
         float dl = dot(dd, dd);
         if (dl < best) { best = dl; bestT = t; bestP = B; }
       }
-      // Refined between the neighbouring samples (a ternary search), so
-      // neither the distance nor the ramp steps from sample to sample.
-      float lo = max(bestT - 1.0 / 24.0, 0.0), hi = min(bestT + 1.0 / 24.0, 1.0);
+      float lo = max(bestT - 1.0 / 32.0, 0.0), hi = min(bestT + 1.0 / 32.0, 1.0);
       for (int s = 0; s < 8; s++) {
         float t1 = mix(lo, hi, 1.0 / 3.0), t2 = mix(lo, hi, 2.0 / 3.0);
-        vec2 B1 = mix(mix(P0, c, t1), mix(c, P2, t1), t1);
-        vec2 B2 = mix(mix(P0, c, t2), mix(c, P2, t2), t2);
-        vec2 d1 = (q - B1) * bow, d2 = (q - B2) * bow;
+        vec2 d1 = (q - cubicAt(P0, C1, C2, P3, t1)) * bow, d2 = (q - cubicAt(P0, C1, C2, P3, t2)) * bow;
         if (dot(d1, d1) < dot(d2, d2)) hi = t2; else lo = t1;
       }
       bestT = 0.5 * (lo + hi);
-      bestP = mix(mix(P0, c, bestT), mix(c, P2, bestT), bestT);
+      bestP = cubicAt(P0, C1, C2, P3, bestT);
       d = (q - bestP) * bow;
       dist = max(length(d), 1e-6);
+      // The ramp as the field (the reference's gold fills one side and
+      // indigo the other, the crest where they meet): the base leans
+      // toward the ramp sampled along the start→end chord.
+      float fm = u_massFieldMix[i];
+      if (fm > 0.0) {
+        vec2 chord = P3 - P0;
+        float tc = clamp(dot(q - P0, chord) / max(dot(chord, chord), 1e-6), 0.0, 1.0);
+        vec3 F = tc < 0.5 ? mix(u_massLabStart[i], u_massLab[i], tc * 2.0)
+                          : mix(u_massLab[i], u_massLabEnd[i], (tc - 0.5) * 2.0);
+        F.x += u_exposure;
+        F.yz *= u_contrast;
+        lab = mix(lab, F, fm);
+        labLow = mix(labLow, F, fm);
+      }
       M = bestT < 0.5 ? mix(u_massLabStart[i], u_massLab[i], bestT * 2.0)
                       : mix(u_massLab[i], u_massLabEnd[i], (bestT - 0.5) * 2.0);
     } else {
@@ -418,8 +440,11 @@ void main() {
     float level = 0.5 + 0.5 * sin(el);   // what a flat surface shades to
     vec3 n = normalize(vec3(-(gradMass + gradRelief + gradStrokes) * H, 1.0));
     vec3 nLow = normalize(vec3(-gradMass * H, 1.0));
-    lab.x += (0.5 + 0.5 * dot(n, L) - level) * u_lightAmount;
-    labLow.x += (0.5 + 0.5 * dot(nLow, L) - level) * u_lightAmount;
+    // The underside goes a tenth deeper than the lip goes brighter.
+    float shade = 0.5 + 0.5 * dot(n, L) - level;
+    float shadeLow = 0.5 + 0.5 * dot(nLow, L) - level;
+    lab.x += shade * u_lightAmount * (shade < 0.0 ? 1.1 : 1.0);
+    labLow.x += shadeLow * u_lightAmount * (shadeLow < 0.0 ? 1.1 : 1.0);
   }
 
   // Haze: the side far from any light mass sinks toward the base.
