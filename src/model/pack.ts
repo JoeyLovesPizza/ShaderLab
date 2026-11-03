@@ -106,8 +106,11 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_reliefTwist = d.relief.twist
   u.u_strokes = amount(d.strokes)
   u.u_strokesAngle = d.strokes.followAngle ? family.motion.angle : d.strokes.direction
-  u.u_strokesLength = d.strokes.length
+  u.u_strokesSize = d.strokes.size
   u.u_strokesDensity = d.strokes.density
+  u.u_strokesTaper = d.strokes.taper
+  u.u_strokesChaos = d.strokes.chaos
+  u.u_strokesFollow = d.strokes.follow
   // The fibres' own motion, scaled by the one Motion dial like the drift.
   u.u_strokesMotion = Math.min(1, d.strokes.motion * (family.motion.amount / 0.6))
   u.u_shadow = amount(d.shadow)

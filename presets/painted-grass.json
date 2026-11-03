@@ -47,13 +47,16 @@
       "spread": 0.1
     },
     "strokes": {
-      "amount": 0.022,
-      "density": 150,
+      "amount": 0.03,
+      "chaos": 0.35,
+      "density": 14,
       "direction": -4,
+      "follow": 0.4,
       "followAngle": false,
-      "length": 0.7,
       "motion": 0.5,
-      "on": true
+      "on": true,
+      "size": 0.35,
+      "taper": 0.25
     },
     "swirl": {
       "amount": 0.3,

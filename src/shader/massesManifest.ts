@@ -56,8 +56,12 @@ export const UNIFORMS = {
   // length in card widths, fibres across the card's height.
   u_strokes: { kind: 'float', default: -1 },
   u_strokesAngle: { kind: 'float', default: 20 },
-  u_strokesLength: { kind: 'float', default: 0.4 },
-  u_strokesDensity: { kind: 'float', default: 80 },
+  /** A mark's length, card widths; cells per card width; taper fraction; angle scatter; lean along the masses. */
+  u_strokesSize: { kind: 'float', default: 0.35 },
+  u_strokesDensity: { kind: 'float', default: 14 },
+  u_strokesTaper: { kind: 'float', default: 0.25 },
+  u_strokesChaos: { kind: 'float', default: 0 },
+  u_strokesFollow: { kind: 'float', default: 0.3 },
   /** 0..1: drift, sway and breathing over the loop. */
   u_strokesMotion: { kind: 'float', default: 0.5 },
   u_shadow: { kind: 'float', default: -1 },

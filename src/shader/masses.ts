@@ -83,8 +83,11 @@ uniform float u_reliefFreq;    // cycles per card width
 uniform float u_reliefTwist;   // degrees
 uniform float u_strokes;       // ±L amount; below zero means off
 uniform float u_strokesAngle;  // degrees
-uniform float u_strokesLength; // card widths
-uniform float u_strokesDensity;// fibres across the card's height
+uniform float u_strokesSize;   // a mark's length, card widths
+uniform float u_strokesDensity;// cells per card width
+uniform float u_strokesTaper;  // fraction of the length that fades at each end
+uniform float u_strokesChaos;  // 0 all one way, 1 up to ±90°
+uniform float u_strokesFollow; // lean along the masses' slope
 uniform float u_strokesMotion; // 0..1: drift, sway and breathing over the loop
 uniform float u_shadow;
 uniform vec4  u_shadowRect;    // x, y, w, h as fractions of the card, y from the bottom
@@ -98,6 +101,7 @@ uniform float u_speed;         // revolutions per loop, an integer
 uniform float u_angle;         // the family's direction, degrees
 uniform float u_exposure;      // added to every mass's L
 uniform float u_contrast;      // multiplies every mass's chroma
+uniform float u_grainSeed;     // the seed, for the mark grid's hashes
 
 const float TAU = 6.28318530718;
 ${ENCODE}
@@ -201,22 +205,29 @@ vec2 pleatGrad(vec2 p, float phase, float aspect) {
 // direction, the way a dry brush or a long exposure draws fibres. The
 // warp is a low-frequency wave, sampled once and shared by the taps that
 // take the gradient, so the fibres undulate together.
-// The along axis is tiled: it runs round a circle in two noise
-// dimensions, so the fibres repeat every STROKE_PERIOD units and a drift
-// of whole periods per loop lands exactly where it started.
-const float STROKE_PERIOD = 1.0;
-float strokeFibres(float along, float across, float aspect) {
-  float density = u_strokesDensity;
-  // ~40:1 at the default length; longer fibres stretch it further.
-  float alongK = density / 40.0 * 0.4 / max(u_strokesLength, 0.05);
+// Brush grain inside a mark: fine noise stretched along the mark's axis,
+// in the mark's own frame. The along axis runs round a circle in two noise
+// dimensions, so a drift of whole periods per loop lands where it began.
+const float STROKE_PERIOD = 0.5;
+float strokeFibres(float along, float across, float width) {
+  // Six or so fibres across a mark, stretched ~30:1.
+  float acrossK = 6.0 / max(width, 1e-3);
+  float alongK = acrossK / 30.0;
   float theta = along * TAU / STROKE_PERIOD;
   float r1 = STROKE_PERIOD * alongK / TAU;
-  float r2 = r1 * 2.1;
   vec2 c = vec2(cos(theta), sin(theta));
-  float n = snoise(vec4(c * r1, across * density, 9.0))
-          + 0.35 * snoise(vec4(c * r2 + 7.0, across * density * 2.1, 13.0));
+  float n = snoise(vec4(c * r1, across * acrossK, 9.0))
+          + 0.35 * snoise(vec4(c * r1 * 2.1 + 7.0, across * acrossK * 2.1, 13.0));
   return n / 1.35;
 }
+
+// Hashes for the mark grid: four numbers in 0..1 per cell, stable per seed.
+vec4 hash4(vec2 cell) {
+  vec4 p = fract(vec4(cell.xyxy) * vec4(0.1031, 0.1030, 0.0973, 0.1099) + u_grainSeed * 0.001);
+  p += dot(p, p.wzxy + 33.33);
+  return fract((p.xxyz + p.yzzw) * p.zywx);
+}
+
 
 vec2 cubicAt(vec2 P0, vec2 C1, vec2 C2, vec2 P3, float t) {
   float u = 1.0 - t;
@@ -380,43 +391,82 @@ void main() {
     }
   }
 
-  // Strokes: the fibres, along their direction, warped by a slow wave.
-  float fibres = 0.0;
+  // Strokes (painted, not dragged): a jittered grid of finite brush marks,
+  // one per cell, each a tapered capsule with its own angle (direction,
+  // scattered by chaos, leaned along the masses by follow), length, width
+  // and lightness, with the fibre grain running along its own axis. The
+  // 3×3 neighbouring cells overlap; a soft-max toward the nearest mark
+  // reads as paint on paint. Motion is periodic: each mark drifts on a
+  // small circle with its own phase, breathes, and sways a little.
+  float marks = 0.0;           // ±L from the marks, already weighted
+  float markCover = 0.0;       // how much the strongest mark covers here
+  float markAngle = 0.0;       // the strongest mark's angle, for the Finish blur
   vec2 gradStrokes = vec2(0.0);
   if (u_strokes >= 0.0) {
     float sa = radians(u_strokesAngle);
-    vec2 dir = vec2(cos(sa), sin(sa));
-    vec2 perp = vec2(-dir.y, dir.x);
-    // Low-frequency fields modulate the amplitude only: n1 lets strokes
-    // come and go, n2 breaks them. Nothing displaces a stroke's position
-    // beyond the one faint wave (under 1% of the card's height), which
-    // keeps the fibres from knotting or bending into contours.
-    // Motion, all of it periodic in the loop and never reversing:
-    // breathing samples the presence noises on a circle over the loop (as
-    // the masses drift), sway turns the undulation's phase once per loop
-    // with a per-band offset so the field does not bend in unison, and
-    // drift slides the fibres along by whole tiling periods per loop.
+    vec2 dirA = vec2(cos(sa), sin(sa));
+    // The masses' slope, for marks that follow the form.
+    vec2 alongField = dirA;
+    float followW = 0.0;
+    float gl = length(gradMass);
+    if (u_strokesFollow > 0.0 && gl > 1e-4) {
+      alongField = vec2(-gradMass.y, gradMass.x) / gl;
+      if (dot(alongField, dirA) < 0.0) alongField = -alongField;
+      followW = u_strokesFollow * smoothstep(0.0, 0.3, gl);
+    }
     float mo = u_strokesMotion;
     float loopT = u_time / u_loopSeconds;
-    vec2 breath = vec2(cos(loopT * TAU), sin(loopT * TAU)) * 0.6 * mo;
-    float n1 = 0.5 + 0.5 * snoise(vec4(q * 0.9, 31.0 + breath.x, 7.0 + breath.y));
-    float n2 = 0.5 + 0.5 * snoise(vec4(q * 1.3 + 5.0, 43.0 + breath.y, 19.0 + breath.x));
-    float band = floor(dot(q, perp) * u_strokesDensity * 0.25);
-    float swayPhase = loopT * TAU + band * 2.399;
-    vec2 sway = vec2(cos(swayPhase), sin(swayPhase)) * 0.8 * mo;
-    float drift = loopT * STROKE_PERIOD * floor(mo * 2.0 + 0.5);
-    float along = dot(q, dir) + drift + 0.025 * snoise(vec4(q * 0.8, 23.0, 5.0));
-    float across = dot(q, perp) + 0.009 * snoise(vec4(q * 1.5, 11.0 + sway.x, 17.0 + sway.y)) + 0.003 * snoise(vec4(q * 4.5, 41.0, 29.0));
-    float presence = (0.3 + 0.7 * n1) * smoothstep(0.35, 0.65, n2);
-    // The ridge's slope is kept the same whatever the density.
-    float eps = 0.002;
-    float sPlus = strokeFibres(along, across + eps, aspect);
-    float sMinus = strokeFibres(along, across - eps, aspect);
-    // The noise's typical swing is about a third of its range: scaled so
-    // the amount is what the fibres actually reach.
-    fibres = strokeFibres(along, across, aspect) * presence;
-    float ridge = 0.3 / max(u_strokesDensity, 1.0);
-    gradStrokes = perp * ((sPlus - sMinus) / (2.0 * eps)) * ridge * presence * (u_strokes / 0.018);
+    float cell = aspect / max(u_strokesDensity, 1.0);
+    float sizeU = u_strokesSize * aspect;
+    vec2 gi = floor(q / cell);
+    float sumW = 0.0;
+    float sumV = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dx = -1; dx <= 1; dx++) {
+        vec2 id = gi + vec2(float(dx), float(dy));
+        vec4 h = hash4(id);
+        vec4 h2 = hash4(id + 17.0);
+        float phase = loopT * TAU + h2.w * TAU;
+        vec2 centre = (id + 0.5 + (h.xy - 0.5) * 0.8) * cell
+                    + mo * 0.12 * cell * vec2(cos(phase), sin(phase));
+        float ang = sa + u_strokesChaos * 1.5707963 * (h.z * 2.0 - 1.0) + mo * 0.08 * sin(phase);
+        vec2 dir = vec2(cos(ang), sin(ang));
+        dir = normalize(mix(dir, alongField, followW));
+        vec2 perp = vec2(-dir.y, dir.x);
+        float len = sizeU * (0.7 + 0.6 * h.w);
+        float wid = sizeU * 0.12 * (0.8 + 0.4 * h2.x);
+        vec2 rel = q - centre;
+        float a = dot(rel, dir);
+        float b = dot(rel, perp);
+        float alongN = abs(a) / (0.5 * len);
+        float acrossN = abs(b) / (0.5 * wid);
+        if (alongN > 1.0 || acrossN > 1.0) continue;
+        // A capsule: smooth taper over the last part of the length, soft
+        // edge across the width.
+        float taper = 1.0 - smoothstep(1.0 - max(u_strokesTaper, 0.01), 1.0, alongN);
+        float edge = 1.0 - smoothstep(0.55, 1.0, acrossN);
+        float cover = taper * edge;
+        if (cover < 0.01) continue;
+        // The grain, only inside the mark (the cost), along its axis.
+        float drift = loopT * STROKE_PERIOD * floor(mo * 2.0 + 0.5);
+        float fib = strokeFibres(a + drift + h2.y * 3.0, b, wid);
+        float breathe = 1.0 - 0.25 * mo * (0.5 + 0.5 * cos(phase));
+        float tone = (h2.z * 2.0 - 1.0 + 0.15) * breathe;
+        float v = (tone * (0.75 + 0.25 * fib) + 0.5 * fib) * cover;
+        float w = cover * cover * cover;
+        sumV += v * w;
+        sumW += w;
+        if (cover > markCover) {
+          markCover = cover;
+          markAngle = atan(dir.y, dir.x);
+          // The mark's edge as a ridge: the across edge's slope, outward.
+          float t = clamp((acrossN - 0.55) / 0.45, 0.0, 1.0);
+          float dEdge = -6.0 * t * (1.0 - t) / 0.45 / (0.5 * wid);
+          gradStrokes = perp * sign(b) * dEdge * taper * 0.0025 * (u_strokes / 0.018);
+        }
+      }
+    }
+    if (sumW > 0.0) marks = sumV / sumW;
   }
 
   // Relief: the pleats live at the edge of the nearest light mass, where
@@ -438,7 +488,7 @@ void main() {
     float az = radians(u_lightAngle), el = radians(u_lightElevation);
     vec3 L = vec3(cos(az) * cos(el), sin(az) * cos(el), sin(el));
     float level = 0.5 + 0.5 * sin(el);   // what a flat surface shades to
-    vec3 n = normalize(vec3(-(gradMass + gradRelief + gradStrokes) * H, 1.0));
+    vec3 n = normalize(vec3(-(gradMass + gradRelief - gradStrokes) * H, 1.0));
     vec3 nLow = normalize(vec3(-gradMass * H, 1.0));
     // The underside goes a tenth deeper than the lip goes brighter.
     float shade = 0.5 + 0.5 * dot(n, L) - level;
@@ -454,9 +504,9 @@ void main() {
     labLow = mix(labLow, u_base, h);
   }
 
-  // Strokes as paint: lighter and darker along the fibres, a little more
-  // lighten than darken, as a loaded brush leaves.
-  if (u_strokes >= 0.0) lab.x += fibres * u_strokes * (fibres > 0.0 ? 1.15 : 0.85);
+  // Strokes as paint: each mark's own tone and grain, a little more lighten
+  // than darken, as a loaded brush leaves.
+  if (u_strokes >= 0.0) lab.x += marks * u_strokes * 2.0 * (marks > 0.0 ? 1.15 : 0.85);
 
   // Shadow: a pooled soft shadow where the UI layer will sit, offset down.
   if (u_shadow >= 0.0) {
@@ -476,6 +526,9 @@ void main() {
 
   // Alpha: the base's own where nothing covers, full under the masses.
   float alpha = mix(1.0, u_baseAlpha, uncovered);
+  // With marks on, the alpha carries the local mark angle for the Finish
+  // blur (every card is opaque; the Final pass knows to read it as 1).
+  if (u_strokes >= 0.0) alpha = markAngle / TAU + 0.5;
   fragColor = vec4(encodeLab(lab), alpha);
 }`
 
@@ -494,6 +547,7 @@ uniform float u_sigmaPx;       // gaussian: sigma in pixels
 uniform int   u_mode;          // 0 motion, 1 gaussian
 uniform float u_intensity;
 uniform float u_seed;
+uniform float u_strokesOn;     // 1: u_src's alpha is each pixel's mark angle
 
 const int MOTION_TAPS = 20;
 const int GAUSS_TAPS = 24;     // each side
@@ -512,9 +566,16 @@ void main() {
     // fraction of a step so the banding of a short tap count hides under
     // the grain instead of reading as ghost edges.
     float jitter = hash(gl_FragCoord.xy, u_seed) - 0.5;
+    // Along the mark under this pixel when marks are on, so each blade is
+    // smeared along itself.
+    vec2 dir = u_dir;
+    if (u_strokesOn > 0.5) {
+      float ang = (orig.a - 0.5) * 6.28318530718;
+      dir = vec2(cos(ang), sin(ang));
+    }
     for (int i = 0; i < MOTION_TAPS; i++) {
       float t = (float(i) + 0.5 + jitter) / float(MOTION_TAPS) - 0.5;
-      sum += texture(u_src, v_uv + u_dir * u_texel * u_lengthPx * t);
+      sum += texture(u_src, v_uv + dir * u_texel * u_lengthPx * t);
     }
     sum /= float(MOTION_TAPS);
   } else {
@@ -544,6 +605,7 @@ uniform float u_frame;         // floor(u_time * fps), for animated grain
 uniform float u_grain;
 uniform float u_grainSeed;
 uniform float u_grainAnimate;
+uniform float u_strokesOn;     // 1: the alpha channel carried a mark angle, not alpha
 
 const float L_MIN = 0.12;
 const float L_MAX = 0.97;
@@ -605,6 +667,6 @@ void main() {
   // Tonal rules: neither black holes nor blown whites.
   lab.x = clamp(lab.x, L_MIN, L_MAX);
 
-  float alpha = clamp(src.a, 0.0, 1.0);
+  float alpha = u_strokesOn > 0.5 ? 1.0 : clamp(src.a, 0.0, 1.0);
   fragColor = vec4(labToSrgb(lab) * alpha, alpha);
 }`

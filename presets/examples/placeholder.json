@@ -48,12 +48,15 @@
     },
     "strokes": {
       "amount": 0.018,
-      "density": 150,
+      "chaos": 0,
+      "density": 14,
       "direction": 20,
+      "follow": 0.3,
       "followAngle": true,
-      "length": 0.4,
       "motion": 0.5,
-      "on": false
+      "on": false,
+      "size": 0.35,
+      "taper": 0.25
     },
     "swirl": {
       "amount": 0.2,

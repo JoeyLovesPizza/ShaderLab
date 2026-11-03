@@ -110,16 +110,23 @@ export interface LightLayer {
 }
 
 /**
- * Strokes (SPEC.md §2, "painted grass"): fibres along one direction, as
- * ±lightness and as low ridges in the height field. `direction` is
- * degrees, ignored while `followAngle` takes the family's; `length` is
- * card widths; `density` is fibres across the card's height.
+ * Strokes (SPEC.md §2, "painted, not dragged"): finite brush marks on a
+ * jittered grid, each a tapered capsule with its own angle, length,
+ * lightness and fibre grain, as ±lightness and as low ridges in the
+ * height field. `direction` is degrees, ignored while `followAngle` takes
+ * the family's; `size` is a mark's length in card widths; `density` is
+ * cells per card width; `taper` the fraction of the length that fades at
+ * each end; `chaos` scatters the angles (0 all one way, 1 up to ±90°);
+ * `follow` leans marks along the masses' slope.
  */
 export interface StrokesLayer extends DepthLayer {
   direction: number
   followAngle: boolean
-  length: number
+  size: number
   density: number
+  taper: number
+  chaos: number
+  follow: number
   /** How much the fibres drift, sway and breathe over the loop, 0..1;
       scaled by the family's Motion dial. */
   motion: number
@@ -323,7 +330,7 @@ export interface Family {
     haze: FamilyLayer
     swirl: FamilyLayer & { scale: number }
     relief: FamilyLayer & { frequency: number; twist: number }
-    strokes: FamilyLayer & { length: number; density: number }
+    strokes: FamilyLayer & { size: number; density: number }
     shadow: FamilyLayer
   }
   /** `version` rises when the family's defaults change in a way that makes

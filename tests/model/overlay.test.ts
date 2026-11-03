@@ -51,6 +51,15 @@ const SHAPES: Record<string, (draft: Obj) => void> = {
   'strokes without motion': (d) => {
     delete ((d.depth as Obj).strokes as Obj).motion
   },
+  'fibre strokes (length and fibres per height, no chaos, taper, follow or size)': (d) => {
+    const strokes = (d.depth as Obj).strokes as Obj
+    delete strokes.size
+    delete strokes.taper
+    delete strokes.chaos
+    delete strokes.follow
+    strokes.length = 0.7
+    strokes.density = 150
+  },
   'everything at once': (d) => {
     delete d.finish
     delete (d.depth as Obj).light
@@ -84,6 +93,9 @@ describe('overlays from earlier builds', () => {
         expect(draft.finish.motionBlur).toBeDefined()
         expect(draft.depth.light).toBeDefined()
         expect(draft.depth.strokes.motion).toBeTypeOf('number')
+        expect(draft.depth.strokes.chaos).toBeTypeOf('number')
+        expect(draft.depth.strokes.size).toBeTypeOf('number')
+        expect(draft.depth.strokes.density).toBeLessThanOrEqual(60)
         for (const m of draft.masses) {
           expect(m.kind === 'blob' || m.kind === 'ridge').toBe(true)
           expect(m.path.control1.x).toBeTypeOf('number')
