@@ -87,133 +87,133 @@
   },
   "masses": [
     {
-      "chroma": 0.0146,
+      "chroma": 0.0149,
       "distance": 0.4,
-      "hue": 21.1,
+      "hue": 28.7,
       "kind": "blob",
       "locked": false,
       "path": {
         "control1": {
-          "x": 0.84,
+          "x": 0.85,
           "y": 0.59
         },
         "control2": {
-          "x": 0.84,
+          "x": 0.85,
           "y": 0.59
         },
         "end": {
-          "x": 1.24,
+          "x": 1.25,
           "y": 0.79
         },
         "start": {
-          "x": 0.44,
+          "x": 0.45,
           "y": 0.39
         }
       },
       "ramp": {
         "end": {
-          "chroma": 0.0146,
-          "hue": 21.1,
+          "chroma": 0.0149,
+          "hue": 28.7,
           "value": 0.9
         },
         "fieldMix": 0,
         "start": {
-          "chroma": 0.0146,
-          "hue": 21.1,
+          "chroma": 0.0149,
+          "hue": 28.7,
           "value": 0.9
         }
       },
-      "size": 0.56,
+      "size": 0.23,
       "softness": 0.7,
       "value": 0.9,
-      "x": 0.84,
+      "x": 0.85,
       "y": 0.59
     },
     {
-      "chroma": 0.0213,
+      "chroma": 0.1206,
       "distance": 0.7,
-      "hue": 42.2,
+      "hue": 77.9,
       "kind": "blob",
       "locked": false,
       "path": {
         "control1": {
-          "x": 0.72,
-          "y": 0.44
+          "x": 0.93,
+          "y": 0.25
         },
         "control2": {
-          "x": 0.72,
-          "y": 0.44
+          "x": 0.93,
+          "y": 0.25
         },
         "end": {
-          "x": 1.12,
-          "y": 0.64
+          "x": 1.33,
+          "y": 0.45
         },
         "start": {
-          "x": 0.32,
-          "y": 0.24
+          "x": 0.53,
+          "y": 0.05
         }
       },
       "ramp": {
         "end": {
-          "chroma": 0.0213,
-          "hue": 42.2,
-          "value": 0.8835
+          "chroma": 0.1206,
+          "hue": 77.9,
+          "value": 0.8105
         },
         "fieldMix": 0,
         "start": {
-          "chroma": 0.0213,
-          "hue": 42.2,
-          "value": 0.8835
+          "chroma": 0.1206,
+          "hue": 77.9,
+          "value": 0.8105
         }
       },
-      "size": 0.47,
+      "size": 0.2,
       "softness": 0.7,
-      "value": 0.8835,
-      "x": 0.72,
-      "y": 0.44
+      "value": 0.8105,
+      "x": 0.93,
+      "y": 0.25
     },
     {
-      "chroma": 0.0367,
+      "chroma": 0.04,
       "distance": 0.7,
-      "hue": 270.3,
+      "hue": 267.5,
       "kind": "blob",
       "locked": false,
       "path": {
         "control1": {
-          "x": 0.59,
-          "y": 0.43
+          "x": 0.58,
+          "y": 0.45
         },
         "control2": {
-          "x": 0.59,
-          "y": 0.43
+          "x": 0.58,
+          "y": 0.45
         },
         "end": {
-          "x": 0.99,
-          "y": 0.63
+          "x": 0.98,
+          "y": 0.65
         },
         "start": {
-          "x": 0.19,
-          "y": 0.23
+          "x": 0.18,
+          "y": 0.25
         }
       },
       "ramp": {
         "end": {
-          "chroma": 0.0367,
-          "hue": 270.3,
-          "value": 0.8124
+          "chroma": 0.04,
+          "hue": 267.5,
+          "value": 0.8021
         },
         "fieldMix": 0,
         "start": {
-          "chroma": 0.0367,
-          "hue": 270.3,
-          "value": 0.8124
+          "chroma": 0.04,
+          "hue": 267.5,
+          "value": 0.8021
         }
       },
-      "size": 0.3,
+      "size": 0.2,
       "softness": 0.7,
-      "value": 0.8124,
-      "x": 0.59,
-      "y": 0.43
+      "value": 0.8021,
+      "x": 0.58,
+      "y": 0.45
     }
   ],
   "meta": {

@@ -6,8 +6,8 @@ import { L_MAX, L_MIN, blobMass, type BaseColor, type Family, type Mass } from '
  * palette and layout pulled from the photo. k-means with k = 5 in OKLab
  * over a small, soft downsample (the W/22 level, near enough). The
  * cluster with the most area and the least lightness becomes the base;
- * of the rest, three are kept scored by area × (0.3 + 4·C), so a small
- * saturated cluster beats a big white one, each a mass at its region's
+ * of the rest, up to three are kept by contrast with what is already
+ * chosen (pickMasses, below), each a mass at its region's
  * centroid, sized by its area, chroma ×1.4 capped at 0.18, L in 0.2–0.9.
  * An editable starting point the caller dirty-marks, so a shuffle does
  * not roll it away.
@@ -30,6 +30,8 @@ interface Cluster {
   count: number
   cx: number
   cy: number
+  /** Mean squared distance from the centroid, in frame-height units. */
+  spread: number
 }
 
 /** `pixels` is RGBA, `width` × `height`, already small and soft. */
@@ -66,7 +68,7 @@ export function extractPalette(pixels: Uint8ClampedArray, width: number, height:
     }
     centres = sums.map((s, k) => (s[3] ? [s[0] / s[3], s[1] / s[3], s[2] / s[3]] : centres[k]))
   }
-  const clusters: Cluster[] = centres.map((lab) => ({ lab, count: 0, cx: 0, cy: 0 }))
+  const clusters: Cluster[] = centres.map((lab) => ({ lab, count: 0, cx: 0, cy: 0, spread: 0 }))
   for (let i = 0; i < labs.length; i++) {
     const c = clusters[assign[i]]
     c.count += 1
@@ -79,6 +81,13 @@ export function extractPalette(pixels: Uint8ClampedArray, width: number, height:
       c.cy /= c.count
     }
   }
+  for (let i = 0; i < labs.length; i++) {
+    const c = clusters[assign[i]]
+    c.spread += ((i % width) - c.cx) ** 2 + (Math.floor(i / width) - c.cy) ** 2
+  }
+  for (const c of clusters) {
+    if (c.count) c.spread /= c.count * height * height
+  }
   const total = labs.length
   const live = clusters.filter((c) => c.count > 0)
   // The base: the most area and the least light, in one score, among the
@@ -86,12 +95,11 @@ export function extractPalette(pixels: Uint8ClampedArray, width: number, height:
   // an edge must not become the base).
   const broad = live.filter((c) => c.count / total >= 0.1)
   const baseCluster = (broad.length ? broad : live).reduce((a, b) => (score(a, total) >= score(b, total) ? a : b))
-  const others = live
-    .filter((c) => c !== baseCluster)
-    .map((c) => ({ c, s: (c.count / total) * (0.3 + 4 * labToOklch(c.lab)[2]) }))
-    .sort((a, b) => b.s - a.s)
-    .slice(0, KEEP)
-    .map(({ c }) => c)
+  const others = pickMasses(
+    live.filter((c) => c !== baseCluster),
+    baseCluster,
+    total,
+  )
 
   const colour = (lab: [number, number, number], chromaMax: number, boost = 1, L = [L_MIN, L_MAX] as readonly [number, number]) => {
     const [hue, Lx, C] = labToOklch(lab)
@@ -104,7 +112,7 @@ export function extractPalette(pixels: Uint8ClampedArray, width: number, height:
       ...colour(c.lab, Math.min(MASS_CHROMA_CAP, family.masses.chromaMax), MASS_CHROMA_BOOST, MASS_L),
       x: round2((c.cx / width) * aspect),
       y: round2(1 - c.cy / height),
-      size: round2(clamp(Math.sqrt(area) * 0.9, 0.2, 1.2)),
+      size: round2(clamp(Math.sqrt(area) * 0.9 * compactness(c, area, aspect) ** 2, 0.2, 1.2)),
       softness: 0.7,
       distance: i === 0 ? 0.4 : 0.7,
       locked: false,
@@ -113,7 +121,59 @@ export function extractPalette(pixels: Uint8ClampedArray, width: number, height:
   return { base, masses }
 }
 
+/*
+ * Masses are picked one at a time. Each candidate scores √area × its OKLab
+ * distance to the nearest colour already chosen (the base, then each kept
+ * mass) × (0.3 + 4·C). Area alone let one white that covers most of the
+ * frame split into three near-identical whites that buried the base (the
+ * daisies at fidelity 0.2 and 0.5); measured against what is already on
+ * the card, the second white is worth almost nothing and the yellow
+ * centres win. A candidate closer than MIN_DISTANCE to a chosen colour is
+ * dropped, so a flat photo gets fewer masses rather than repeats.
+ */
+const MIN_DISTANCE = 0.05
+
+function pickMasses(candidates: Cluster[], base: Cluster, total: number): Cluster[] {
+  const chosen = [base]
+  const picked: Cluster[] = []
+  const pool = [...candidates]
+  while (picked.length < KEEP && pool.length) {
+    let bestIndex = -1
+    let bestScore = 0
+    pool.forEach((c, i) => {
+      const d = Math.min(...chosen.map((o) => distance(c.lab, o.lab)))
+      if (d < MIN_DISTANCE) return
+      const s = Math.sqrt(c.count / total) * d * (0.3 + 4 * labToOklch(c.lab)[2])
+      if (s > bestScore) {
+        bestScore = s
+        bestIndex = i
+      }
+    })
+    if (bestIndex < 0) break
+    const [next] = pool.splice(bestIndex, 1)
+    picked.push(next)
+    chosen.push(next)
+  }
+  return picked
+}
+
+const distance = (a: [number, number, number], b: [number, number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Number(v.toFixed(4))))
+/*
+ * How much a cluster is one form rather than a scatter: the spread a disc
+ * of its area would have, over the spread it has (1 for a disc, toward 0
+ * for petals strewn across the frame). A mass is one soft blob at the
+ * centroid, so a scattered cluster sized by its whole area blankets the
+ * card (the daisies' white, 40% of the frame in a hundred petals, turned
+ * the sky to white at every fidelity). Squared in the size, so a scatter
+ * shrinks to an accent; the photo pyramid already carries the texture.
+ */
+function compactness(c: Cluster, area: number, aspect: number): number {
+  // A uniform disc of radius r has a mean squared distance of r²/2.
+  const discSpread = (area * aspect) / Math.PI / 2
+  return c.spread > 0 ? Math.min(1, Math.sqrt(discSpread / c.spread)) : 1
+}
+
 /** Area and darkness together: the base is what most of the photo sits on. */
 const score = (c: Cluster, total: number) => (c.count / total) * (1 - c.lab[0])
 const round2 = (v: number) => Number(v.toFixed(2))

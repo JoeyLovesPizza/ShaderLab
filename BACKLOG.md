@@ -4,20 +4,19 @@ What is in flight, next, and known broken. SPEC.md holds direction and decisions
 
 ## In flight
 
-### Photo stage (branch `lab`, commit `8db03e9`, pushed, not merged)
+### Photo stage (branch `claude/backlog-work-102406`: `lab` plus main plus the extraction fix, pushed, not merged)
 Joe's ask: drop in a photo and process it with the toolkit, so the card lands somewhere between the photo and the abstract field (SPEC.md §4, "Photo stage" and "The continuum").
 
-Done on the branch:
+Done:
 - Drop a photo on a card or the grid, or pick one in the panel's Photo folder. It's cover-fit to 1226×816 and saved as WebP to `presets/photos/<id>.webp` in dev, or to IndexedDB on the hosted site.
 - A four-level blur pyramid in OKLab, with each level auto-levelled and its chroma restored. Extraction runs k-means on the W/22 level.
 - Fidelity tables in `src/model/photo.ts`, plus PNG and WebM export, ship, the manifest, and schema family version 7 with an overlay test.
-- `npm run check` is green with 79 tests.
-- The pixel test passes. The washed-out look was the photo uploading upside down, not a colour-space bug.
+- **The pale daisies are fixed (2026-11-04).** There were two causes in `src/model/extract.ts`. Masses were picked by area, so the one white split into three near-identical whites. They are now picked greedily by OKLab distance to what is already chosen, so the second white loses to the yellow centres. The bigger cause was that the white is petals scattered over the whole frame, and one blob at their centroid sized by their total area (0.57) blanketed the card. Size is now scaled by the cluster's compactness squared, so the white is 0.23. Near-white coverage went from 60% to 7% at 0.2 and from 11% to 0.4% at 0.5; 0.8 is unchanged. `presets/daisies.json` is re-extracted. `tests/model/extract.test.ts` runs on a 64×43 fixture of the daisies.
+- `npm run check` is green with 84 tests.
 
 Open:
-- **At fidelity 0.2 and 0.5 the daisies are near-white.** The three masses kept are petal whites (L 0.81–0.90, C ≤ 0.04), and at weight 1.0 and 0.6 they cover the sky-blue base. Fix the mass score in extraction: weight by contrast with the base (lightness and chroma distance), not area alone, so a white that matches most of the frame loses to the sky and the yellow centres. Re-render at 0.2, 0.5 and 0.8.
-- **Test with Joe's own photos.** None are in `reference/` yet; ask for two or three with a clear light source and large forms.
-- Then call one fresh Critic on the three fidelity points, merge `lab` into main, run `npm install` on main, `npm run check`, push, `npm run deploy`, and remove the worktree and branch.
+- **Test with Joe's own photos.** None are in `reference/` yet; ask for two or three with a clear light source and large forms. A photo with one large, compact form is the case the compactness rule hasn't been tried on.
+- Then call one fresh Critic on the three fidelity points, merge into main, run `npm install` on main, `npm run check`, push, `npm run deploy`, and remove the `lab` and `backlog-work-102406` worktrees and branches.
 
 ## Next
 - **Video clips per state.** Each preset's `states` block (idle, hover, active) is previewed in Focus. Export should write one loop per state, idle and active only (SPEC.md §4, runtime path A).
@@ -33,6 +32,7 @@ Open:
 - **Wiring backgrounds into Portfolio cards.** Joe's own agent does this from `handoff/`. A background shows only once the card's UI art is exported with a transparent surround; the current Figma exports are opaque.
 
 ## Known issues
+- `.claude/launch.json` has a second entry, `shaderlab-worktree` on 5179, because `autoPort` did not move `shaderlab-dev` off 5176 from a worktree.
 - The smoke script borrows Playwright and Chromium from the sibling `HITL` repo, or from `PLAYWRIGHT_ROOT`. Port 5181 is sometimes held by CaseFilms, so the smoke falls back to another port.
 - The WebM loop seam carries about 2/255 of codec drift between the last and first frames. That's quality drift, not motion. QuickTime cannot play VP9, which is why ship also writes MP4.
 - The Strokes painted-grass preset is close to its reference but not identical. The Critic last called it "fibres, smeared", which was acceptable.
