@@ -345,6 +345,17 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
 
   issues.bool(input, 'captionMask', '')
 
+  // The photo arrived 2026-11-04: a file or overlay without one has none.
+  if (input.photo === undefined) input.photo = null
+  if (input.photo !== null) {
+    if (!isObj(input.photo)) issues.add('photo', 'must be null or { src, fidelity }')
+    else {
+      const src = input.photo.src
+      if (typeof src !== 'string' || !src) issues.add('photo.src', 'must be a path under presets/')
+      else if (src.startsWith('data:')) issues.add('photo.src', 'must be a path, never a data URL')
+      issues.num(input.photo, 'fidelity', 'photo', 0, 1)
+    }
+  }
   if (input.image !== null && input.image !== undefined) {
     if (!isObj(input.image)) issues.add('image', 'must be null or { src, fidelity, rampSource }')
     else {
@@ -514,7 +525,7 @@ export const clampTo = (v: number, [min, max]: Range) => Math.min(max, Math.max(
 
 export const describe = (issues: ValidationIssue[]) => issues.map((i) => `${i.path || '(root)'}: ${i.message}`).join('; ')
 
-const DRAFT_KEYS = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'finish', 'captionMask', 'loop'] as const
+const DRAFT_KEYS = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'finish', 'captionMask', 'loop', 'photo'] as const
 
 /**
  * An overlay (a card's draft from localStorage, or a library card) is a

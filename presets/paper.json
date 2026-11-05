@@ -170,6 +170,7 @@
     "coverage": "blend",
     "structure": "none"
   },
+  "photo": null,
   "schema": 2,
   "seed": 35,
   "shader": "masses@1",

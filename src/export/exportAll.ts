@@ -7,6 +7,7 @@ import { cardStateFrom, stage } from '../shader/stage'
 import { download } from './download'
 import { API_BASE, whenProbed } from './mode'
 import { exportPng } from './png'
+import { photoBlob } from './photoStore'
 import { WEBM_UNSUPPORTED, canExportWebm, exportWebm } from './webm'
 import { presetFromCard, serializePreset } from './preset'
 
@@ -33,6 +34,8 @@ interface Background {
   palette: string
   /** The loop as H.264 MP4, when a WebM was exported (ship.mjs transcodes it). */
   video?: string
+  /** The card's photo, when it has one. */
+  photo?: string
 }
 
 async function post(url: string, body: Blob | string, type: string): Promise<string> {
@@ -89,6 +92,8 @@ export async function exportCards(
       const result = validatePreset(next)
       if (!result.ok) throw new Error(result.issues.map((i) => `${i.path}: ${i.message}`).join('; '))
       const state = cardStateFrom(preset, draft, getFamily())
+      // The photo must be in the stage before the poster renders.
+      if (draft.photo) await stage.ensurePhoto(draft.photo.src)
       const png = await exportPng(preset, state, { scale: 2, time: draft.loop.stillTime })
       const json = serializePreset(result.value)
       const size = `${preset.canvas.width * 2} × ${preset.canvas.height * 2}`
@@ -123,6 +128,17 @@ export async function exportCards(
           line.message += `, ${webmPath} (${took})`
         }
       }
+      // The photo alongside: out/photos/<id>.webp (ship copies it over).
+      if (draft.photo) {
+        const blob = await photoBlob(draft.photo.src)
+        if (isStatic) {
+          download(blob, `${preset.id}.webp`)
+          await new Promise((r) => setTimeout(r, 250))
+          line.message += `, downloaded ${preset.id}.webp`
+        } else {
+          line.message += `, ${await post(`${API_BASE}/export/${encodeURIComponent(preset.id)}/photo`, blob, 'image/webp')}`
+        }
+      }
       backgrounds.push({
         id: preset.id,
         name: preset.meta.name,
@@ -131,6 +147,7 @@ export async function exportCards(
         shadowColor: meanColor(preset, draft.loop.stillTime),
         palette: paletteNote(preset),
         ...(options.webm ? { video: `/work/shaders/card-${preset.id}.mp4` } : {}),
+        ...(draft.photo ? { photo: `/work/shaders/photos/${preset.id}.webp` } : {}),
       })
       line.ok = true
     } catch (err) {

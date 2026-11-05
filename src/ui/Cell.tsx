@@ -59,9 +59,11 @@ interface CellProps {
   focus: CellFocus | null
   onSelect: (presetId: string) => void
   onHover: (presetId: string | null) => void
+  /** An image file dropped on the card. */
+  onPhotoDrop?: (presetId: string, file: File) => void
 }
 
-export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover }: CellProps) {
+export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover, onPhotoDrop }: CellProps) {
   const draft = useDraft(preset.id)
   const modified = useModified(preset.id)
   const dirtyPaths = useDirtyPaths(preset.id)
@@ -243,6 +245,16 @@ export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover }
         onLayoutAnimationComplete={() => setLanded(true)}
         onPointerEnter={onEnter}
         onPointerLeave={onLeave}
+        onDragOver={(e) => {
+          if (onPhotoDrop && e.dataTransfer.types.includes('Files')) e.preventDefault()
+        }}
+        onDrop={(e) => {
+          const file = [...e.dataTransfer.files].find((f) => f.type.startsWith('image/'))
+          if (!file || !onPhotoDrop) return
+          e.preventDefault()
+          e.stopPropagation()
+          onPhotoDrop(preset.id, file)
+        }}
         onClick={() => {
           if (!focusedRef.current) onSelect(preset.id)
         }}

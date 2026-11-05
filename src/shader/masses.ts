@@ -103,6 +103,24 @@ uniform float u_exposure;      // added to every mass's L
 uniform float u_contrast;      // multiplies every mass's chroma
 uniform float u_grainSeed;     // the seed, for the mark grid's hashes
 
+// The Photo stage (SPEC.md §4): the photo's blur pyramid (σ W/6, W/16,
+// W/40, W/80), the fractional level the composite samples, how far the
+// base leans to the photo, how much the masses still composite, and how
+// much the W/16 luminance shapes the height field.
+uniform sampler2D u_photoL0;
+uniform sampler2D u_photoL1;
+uniform sampler2D u_photoL2;
+uniform sampler2D u_photoL3;
+uniform float u_photoOn;
+uniform float u_photoLevel;
+uniform float u_photoMix;
+uniform float u_photoMassWeight;
+uniform float u_photoHeight;
+uniform float u_photoChromaCap; // the family's mass chroma cap
+uniform vec4  u_photoLo;        // P5 of L per level, after the blur
+uniform vec4  u_photoHi;        // P95 of L per level
+uniform vec2  u_photoSrc;       // P5 and P95 of the source's L
+
 const float TAU = 6.28318530718;
 ${ENCODE}
 
@@ -170,6 +188,31 @@ float snoise(vec4 v) {
 }
 
 // ---- Helpers ------------------------------------------------------------------
+// One pyramid level, 0..3, as OKLab: decoded, its L levelled back to the
+// source's P5–P95 (every blur compresses contrast; this is global, so no
+// halo), its chroma restored by the boost and capped by the family.
+vec3 photoLevel(int i, vec2 uv) {
+  vec3 enc;
+  float lo, hi;
+  if (i <= 0) { enc = texture(u_photoL0, uv).rgb; lo = u_photoLo.x; hi = u_photoHi.x; }
+  else if (i == 1) { enc = texture(u_photoL1, uv).rgb; lo = u_photoLo.y; hi = u_photoHi.y; }
+  else if (i == 2) { enc = texture(u_photoL2, uv).rgb; lo = u_photoLo.z; hi = u_photoHi.z; }
+  else { enc = texture(u_photoL3, uv).rgb; lo = u_photoLo.w; hi = u_photoHi.w; }
+  vec3 lab = decodeLab(enc);
+  lab.x = u_photoSrc.x + (lab.x - lo) / max(hi - lo, 0.01) * (u_photoSrc.y - u_photoSrc.x);
+  float C = length(lab.yz);
+  if (C > 1e-5) lab.yz *= min(C * 1.3, u_photoChromaCap) / C;
+  return lab;
+}
+vec3 photoAt(float level, vec2 uv) {
+  float lv = clamp(level, 0.0, 3.0);
+  int lo = int(floor(lv));
+  float t = lv - float(lo);
+  vec3 a = photoLevel(lo, uv);
+  if (t < 0.001) return a;
+  return mix(a, photoLevel(lo + 1, uv), t);
+}
+
 vec2 rotate(vec2 v, float a) {
   float c = cos(a), s = sin(a);
   return mat2(c, -s, s, c) * v;
@@ -277,8 +320,28 @@ void main() {
   // across the whole card.
   vec2 gradMass = -curve * 2.0 * edge * fromCentre;
 
-  vec3 lab = u_base;
-  vec3 labLow = u_base;   // the field without the pleats, for the caption mask
+  // The photo under everything: its colour at the sampled level leans the
+  // base toward it; its W/16 luminance adds to the height field; its
+  // gradient is what strokes follow. The sample is static over the loop.
+  vec3 base = u_base;
+  vec2 gradPhoto = vec2(0.0);
+  if (u_photoOn > 0.5) {
+    vec3 photoLab = photoAt(u_photoLevel, v_uv);
+    base = mix(u_base, photoLab, u_photoMix);
+    // The luminance that shapes the field: W/10 at low fidelity, W/22 above.
+    int hl = u_photoLevel < 0.5 ? 0 : 1;
+    vec2 eps = vec2(2.0 / u_resolution.x, 2.0 / u_resolution.y);
+    float lx1 = photoLevel(hl, v_uv + vec2(eps.x, 0.0)).x;
+    float lx0 = photoLevel(hl, v_uv - vec2(eps.x, 0.0)).x;
+    float ly1 = photoLevel(hl, v_uv + vec2(0.0, eps.y)).x;
+    float ly0 = photoLevel(hl, v_uv - vec2(0.0, eps.y)).x;
+    // Per unit of p: uv.x spans aspect units, uv.y one.
+    gradPhoto = vec2((lx1 - lx0) / (2.0 * eps.x * aspect), (ly1 - ly0) / (2.0 * eps.y));
+    gradMass += gradPhoto * u_photoHeight;
+  }
+
+  vec3 lab = base;
+  vec3 labLow = base;     // the field without the pleats, for the caption mask
   float uncovered = 1.0;  // what no mass has reached, for the alpha
   float nearestLight = 1e9;
   float nearestF = 0.0;
@@ -355,11 +418,11 @@ void main() {
     float k = mix(4.0, 1.6, clamp((prm.y - 0.4) / 0.5, 0.0, 1.0));
     float u = max(dist - 0.25 * prm.x, 0.0) / prm.x;
     float f0 = exp(-0.5 * pow(u, k)) * u_massOpacity[i];
-    float f = f0 * tilt;
+    float f = f0 * tilt * u_photoMassWeight;
 
     M.x += u_exposure;
     M.yz *= u_contrast;
-    bool light = M.x > u_base.x;
+    bool light = M.x > base.x;
 
     // The height has its own profile: a wide, smooth bell with no plateau
     // (the colour's mesa, lit, read as an embossed button with a dark rim;
@@ -408,9 +471,12 @@ void main() {
     // The masses' slope, for marks that follow the form.
     vec2 alongField = dirA;
     float followW = 0.0;
-    float gl = length(gradMass);
+    // With a photo, marks follow the photo's own luminance gradient
+    // instead of the masses' slope.
+    vec2 slope = u_photoOn > 0.5 ? gradPhoto : gradMass;
+    float gl = length(slope);
     if (u_strokesFollow > 0.0 && gl > 1e-4) {
-      alongField = vec2(-gradMass.y, gradMass.x) / gl;
+      alongField = vec2(-slope.y, slope.x) / gl;
       if (dot(alongField, dirA) < 0.0) alongField = -alongField;
       followW = u_strokesFollow * smoothstep(0.0, 0.3, gl);
     }
@@ -485,7 +551,9 @@ void main() {
   // surface shades to exactly nothing, so height 0 is the card as it was.
   if (u_light >= 0.0) {
     float H = height * 1.5;
-    float az = radians(u_lightAngle), el = radians(u_lightElevation);
+    // Over a photo the light's angle breathes ±2° on the loop (the photo
+    // itself never moves).
+    float az = radians(u_lightAngle + (u_photoOn > 0.5 ? 2.0 * sin(phase) : 0.0)), el = radians(u_lightElevation);
     vec3 L = vec3(cos(az) * cos(el), sin(az) * cos(el), sin(el));
     float level = 0.5 + 0.5 * sin(el);   // what a flat surface shades to
     vec3 n = normalize(vec3(-(gradMass + gradRelief - gradStrokes) * H, 1.0));
@@ -500,8 +568,8 @@ void main() {
   // Haze: the side far from any light mass sinks toward the base.
   if (u_haze >= 0.0 && nearestLight < 1e8) {
     float h = u_haze * clamp((nearestLight - 1.0) * 0.5, 0.0, 1.0);
-    lab = mix(lab, u_base, h);
-    labLow = mix(labLow, u_base, h);
+    lab = mix(lab, base, h);
+    labLow = mix(labLow, base, h);
   }
 
   // Strokes as paint: each mark's own tone and grain, a little more lighten

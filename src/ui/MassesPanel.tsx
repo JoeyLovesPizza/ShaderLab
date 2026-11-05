@@ -13,6 +13,7 @@ import {
   subscribeCards,
 } from '../model/cards'
 import { saveCard } from '../export/save'
+import { importPhoto } from '../export/photo'
 import { getFamily, setFamily, useFamily } from '../model/family'
 import { rollScoped, type RollScope } from '../model/shuffle'
 import {
@@ -207,6 +208,12 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
         intensity: slider(draft.finish.layerBlur.intensity, 0, 1, 0.01),
       },
     },
+    // The Photo stage (SPEC.md §4): the file (an upload through DialKit's
+    // image control lands as a drop) and the one fidelity dial.
+    photo: {
+      file: { type: 'image', default: draft.photo ? draft.photo.src : '' },
+      fidelity: slider(draft.photo?.fidelity ?? 0.5, 0, 1, 0.01),
+    },
     // The family's one light (SPEC.md §2, Light), shared by every card.
     light: {
       angle: slider(family.light.angle, -180, 180, 1),
@@ -357,6 +364,9 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
     },
     captionMask: bool(depth, 'captionMask', current.captionMask),
     loop: { ...current.loop, seconds: num(motion, 'loopSeconds', current.loop.seconds) },
+    // The file itself is set by a drop or an upload (handled outside the
+    // draft); the panel only moves the fidelity.
+    photo: current.photo ? { src: current.photo.src, fidelity: num(folder(v, 'photo'), 'fidelity', current.photo.fidelity) } : null,
   }
 }
 
@@ -424,6 +434,7 @@ function valuesFromDraft(draft: CardDraft): Values {
       layerBlur: { ...draft.finish.layerBlur },
     },
     motion: { loopSeconds: draft.loop.seconds },
+    photo: { file: draft.photo?.src ?? '', fidelity: draft.photo?.fidelity ?? 0.5 },
   }
 }
 
@@ -534,6 +545,25 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
     push()
     return subscribeCards(push)
   }, [dial, preset.id])
+
+  // --- Photo upload through the image control --------------------------------
+  // DialKit hands an uploaded picture over as a URL (data: or blob:); a
+  // value that is neither empty nor the card's own src is a new photo.
+  const photoFile = typeof folder(v, 'photo').file === 'string' ? (folder(v, 'photo').file as string) : ''
+  const importingRef = useRef(false)
+  useEffect(() => {
+    const current = getDraft(preset.id).photo?.src ?? ''
+    if (!photoFile || photoFile === current || importingRef.current) return
+    if (!photoFile.startsWith('data:') && !photoFile.startsWith('blob:')) return
+    importingRef.current = true
+    fetch(photoFile)
+      .then((r) => r.blob())
+      .then((blob) => importPhoto(preset.id, blob))
+      .catch((err: unknown) => console.warn('[ShaderLab] photo upload failed:', err))
+      .finally(() => {
+        importingRef.current = false
+      })
+  }, [photoFile, preset.id])
 
   // --- Family dials: variety, grain animation, motion ---------------------------
   const variety = v.variety as number

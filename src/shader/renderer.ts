@@ -21,10 +21,34 @@ export interface FrameParams {
   blurScale?: number
 }
 
+/**
+ * A photo's pyramid on this renderer: the four blurred levels (σ W/6,
+ * W/16, W/40, W/80 of the photo's width), built once per photo and bound
+ * for the field pass while a card with that photo draws.
+ */
+export interface PhotoTextures {
+  levels: WebGLTexture[]
+  /** P5 and P95 of L per level, after the blur, and of the source: the
+      shader levels each sample back to the source's range. */
+  ranges: { lo: number; hi: number }[]
+  source: { lo: number; hi: number }
+  dispose(): void
+}
+
+/** A photo as encoded OKLab (R = L, G = a·1.25 + 0.5, B = b·1.25 + 0.5). */
+export interface PhotoLab {
+  data: ImageData
+  range: { lo: number; hi: number }
+}
+
 export interface Renderer {
   readonly gl: WebGL2RenderingContext
   readonly canvas: HTMLCanvasElement | OffscreenCanvas
   setUniforms(values: Partial<UniformValues>): void
+  /** Builds a photo's pyramid from a decoded image (cover-fitted already). */
+  buildPhoto(photo: PhotoLab, sigmas: readonly number[]): PhotoTextures
+  /** The pyramid the next draws sample, or none. */
+  setPhoto(photo: PhotoTextures | null): void
   /**
    * Backing-store size in device pixels. With `grow`, the canvas only ever
    * gets bigger and the viewport is set to the requested size: a shared
@@ -74,7 +98,7 @@ if (import.meta.hot) {
   })
 }
 
-const FIELD_FIXED = ['u_resolution', 'u_time', 'u_loopSeconds'] as const
+const FIELD_FIXED = ['u_resolution', 'u_time', 'u_loopSeconds', 'u_photoL0', 'u_photoL1', 'u_photoL2', 'u_photoL3', 'u_photoLo', 'u_photoHi', 'u_photoSrc'] as const
 const FINAL_FIXED = ['u_src', 'u_frame', 'u_grain', 'u_grainSeed', 'u_grainAnimate', 'u_strokesOn'] as const
 const BLUR_FIXED = ['u_src', 'u_orig', 'u_texel', 'u_dir', 'u_lengthPx', 'u_sigmaPx', 'u_mode', 'u_intensity', 'u_seed', 'u_strokesOn'] as const
 
@@ -112,6 +136,15 @@ function link(gl: WebGL2RenderingContext, vert: string, frag: string, names: rea
   const loc = new Map<string, WebGLUniformLocation | null>()
   for (const name of names) loc.set(name, gl.getUniformLocation(program, name))
   return { program, loc }
+}
+
+/** P5 and P95 of the red channel (encoded L) over every `stride`-th pixel. */
+export function percentiles(rgba: Uint8Array | Uint8ClampedArray, stride: number): { lo: number; hi: number } {
+  const values: number[] = []
+  for (let i = 0; i < rgba.length; i += 4 * stride) values.push(rgba[i])
+  values.sort((a, b) => a - b)
+  const at = (q: number) => values[Math.min(values.length - 1, Math.floor(q * values.length))] / 255
+  return { lo: at(0.05), hi: at(0.95) }
 }
 
 interface Target {
@@ -168,10 +201,10 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     return { texture, fbo, width: 0, height: 0 }
   }
-  const fit = (t: Target, w: number, h: number) => {
+  const fit = (t: Target, w: number, h: number, float = floatOk) => {
     if (t.width === w && t.height === h) return
     gl.bindTexture(gl.TEXTURE_2D, t.texture)
-    if (floatOk) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null)
+    if (float) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null)
     else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
     gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo)
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t.texture, 0)
@@ -184,6 +217,12 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
   const values = defaultUniforms()
   let width = 0
   let height = 0
+  let photo: PhotoTextures | null = null
+  // A 1×1 black texture stands in for an absent photo, so the samplers
+  // always have something bound.
+  const blank = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, blank)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]))
 
   // GPU timing: a small ring of queries, read back when available.
   const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2') as TimerExt | null
@@ -276,9 +315,96 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
     gl.drawArrays(gl.TRIANGLES, 0, 3)
   }
 
+  /**
+   * Builds the pyramid from the photo in encoded OKLab: the blur mixes
+   * OKLab, not light, so highlights do not swallow their surroundings.
+   * Each level renders at half the photo's size, horizontally then
+   * vertically, to an 8-bit target (encoded OKLab fits, and 8 bits read
+   * back anywhere), and its L range is measured for the shader's
+   * auto-level. Once per photo, never per frame.
+   */
+  function buildPhoto(photo: PhotoLab, sigmas: readonly number[]): PhotoTextures {
+    const { data } = photo
+    const source = makeTarget()
+    gl.bindTexture(gl.TEXTURE_2D, source.texture)
+    // ImageData's row 0 is the top; the field's v_uv.y = 0 is the bottom.
+    // (An ImageBitmap upload ignores this flag, which is why the photo
+    // went through ImageData in the first place.)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.data)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.BROWSER_DEFAULT_WEBGL)
+    source.width = data.width
+    source.height = data.height
+    const w = Math.max(1, Math.round(data.width / 2))
+    const h = Math.max(1, Math.round(data.height / 2))
+    const temp = makeTarget()
+    fit(temp, w, h, false)
+    const strokesLoc = gl.getUniformLocation(blur.program, 'u_strokesOn')
+    const pixels = new Uint8Array(w * h * 4)
+    const levels: Target[] = []
+    const ranges = sigmas.map((sigma) => {
+      const level = makeTarget()
+      fit(level, w, h, false)
+      // σ in the pixels of whatever each pass samples: the horizontal pass
+      // reads the full-size source, the vertical one the half-size temp.
+      gl.useProgram(blur.program)
+      gl.uniform1f(strokesLoc, 0)
+      blurPassRaw(source, source, temp, [1, 0], sigma * data.width, 0)
+      blurPassRaw(temp, temp, level, [0, 1], sigma * w, 0)
+      levels.push(level)
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+      return percentiles(pixels, 4)
+    })
+    gl.deleteFramebuffer(temp.fbo)
+    gl.deleteTexture(temp.texture)
+    gl.deleteFramebuffer(source.fbo)
+    gl.deleteTexture(source.texture)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    return {
+      levels: levels.map((l) => l.texture),
+      ranges,
+      source: photo.range,
+      dispose() {
+        for (const l of levels) {
+          gl.deleteFramebuffer(l.fbo)
+          gl.deleteTexture(l.texture)
+        }
+      },
+    }
+  }
+
+  /** The Gaussian pass with intensity 1 and no mark angle: a plain blur. */
+  function blurPassRaw(src: Target, orig: Target, out: Target, dir: [number, number], sigmaPx: number, strokesOn: number) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo)
+    gl.viewport(0, 0, out.width, out.height)
+    gl.useProgram(blur.program)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, src.texture)
+    gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, orig.texture)
+    gl.uniform1i(blur.loc.get('u_src') ?? null, 0)
+    gl.uniform1i(blur.loc.get('u_orig') ?? null, 1)
+    gl.uniform2f(blur.loc.get('u_texel') ?? null, 1 / src.width, 1 / src.height)
+    gl.uniform2f(blur.loc.get('u_dir') ?? null, dir[0], dir[1])
+    gl.uniform1f(blur.loc.get('u_lengthPx') ?? null, 0)
+    gl.uniform1f(blur.loc.get('u_sigmaPx') ?? null, sigmaPx)
+    gl.uniform1i(blur.loc.get('u_mode') ?? null, 1)
+    gl.uniform1f(blur.loc.get('u_intensity') ?? null, 1)
+    gl.uniform1f(blur.loc.get('u_seed') ?? null, 0)
+    gl.uniform1f(blur.loc.get('u_strokesOn') ?? null, strokesOn)
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
+  }
+
   return {
     gl,
     canvas,
+    buildPhoto,
+    setPhoto(next) {
+      photo = next
+    },
     setUniforms(next) {
       for (const name of UNIFORM_NAMES) {
         const v = next[name]
@@ -320,6 +446,18 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
       gl.uniform2f(field.loc.get('u_resolution') ?? null, width, height)
       gl.uniform1f(field.loc.get('u_time') ?? null, time)
       gl.uniform1f(field.loc.get('u_loopSeconds') ?? null, loopSeconds)
+      // The photo's levels on units 1–4 (unit 0 is the Finish's input).
+      for (let i = 0; i < 4; i++) {
+        gl.activeTexture(gl.TEXTURE1 + i)
+        gl.bindTexture(gl.TEXTURE_2D, photo?.levels[i] ?? blank)
+        gl.uniform1i(field.loc.get(`u_photoL${i}`) ?? null, 1 + i)
+      }
+      gl.activeTexture(gl.TEXTURE0)
+      const lo = photo ? photo.ranges.map((r) => r.lo) : [0, 0, 0, 0]
+      const hi = photo ? photo.ranges.map((r) => r.hi) : [1, 1, 1, 1]
+      gl.uniform4fv(field.loc.get('u_photoLo') ?? null, lo)
+      gl.uniform4fv(field.loc.get('u_photoHi') ?? null, hi)
+      gl.uniform2f(field.loc.get('u_photoSrc') ?? null, photo?.source.lo ?? 0, photo?.source.hi ?? 1)
       gl.drawArrays(gl.TRIANGLES, 0, 3)
 
       // Finish: the blur passes, in card widths turned into pixels of the
@@ -376,6 +514,7 @@ export function createRenderer(canvas: HTMLCanvasElement | OffscreenCanvas): Ren
       }
       gl.deleteBuffer(buffer)
       gl.deleteVertexArray(vao)
+      gl.deleteTexture(blank)
       for (const p of [field, blur, final]) gl.deleteProgram(p.program)
       // Deliberately no loseContext(): a canvas keeps its one context for
       // life, and a renderer created on it again would compile against a

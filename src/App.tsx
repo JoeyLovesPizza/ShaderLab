@@ -19,6 +19,7 @@ import {
 } from './model/library'
 import { newSeed, rollScoped, shuffle } from './model/shuffle'
 import { deleteCardFile, saveCard } from './export/save'
+import { importPhoto } from './export/photo'
 import { exportAll, exportCards } from './export/exportAll'
 import { useStaticMode } from './export/mode'
 import { Browse } from './ui/Browse'
@@ -53,7 +54,7 @@ function usePanelOpen() {
 // update lands on a fresh module instance, not these.
 if (import.meta.env.DEV) {
   Object.assign(window, {
-    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle },
+    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto },
   })
 }
 
@@ -222,6 +223,19 @@ export default function App() {
       setNotice(`${meta.name}: deleted${isStatic || !file ? '' : ` (presets/${file}.json removed)`}`)
     } catch (err) {
       setNotice(`${meta.name}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+  // A photo dropped on a card, or on the grid for the active card.
+  const onPhotoDrop = async (presetId: string | null, file: File) => {
+    const id = presetId ?? activePreset?.id
+    if (!id) return
+    setNotice(`${id}: reading the photo…`)
+    try {
+      const { src, extracted } = await importPhoto(id, file)
+      setActiveId(id)
+      setNotice(`${id}: photo set (${src}), palette extracted: base ${extracted.base}, ${extracted.masses} masses`)
+    } catch (err) {
+      setNotice(`${id}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
   const onExportOne = async () => {
@@ -407,6 +421,7 @@ export default function App() {
           focus={focus}
           onSelect={onSelect}
           onHover={onHover}
+          onPhotoDrop={onPhotoDrop}
         />
       </main>
       {isStatic && (

@@ -27,6 +27,7 @@ const SLUG = /^[a-z0-9][a-z0-9-]*$/
 
 function presetWriter(): Plugin {
   const presets = '/__shaderlab/presets/'
+  const photos = '/__shaderlab/photos/'
   const exports = '/__shaderlab/export/'
   return {
     name: 'shaderlab-preset-writer',
@@ -59,6 +60,20 @@ function presetWriter(): Plugin {
         }
         // Delete: a card removed from the library, or the old file of a
         // renamed card once the new one is written.
+        // A dropped photo, cover-fitted and encoded by the app: presets/photos/<id>.webp.
+        if (req.method === 'POST' && url.startsWith(photos)) {
+          const id = decode(url.slice(photos.length))
+          if (!SLUG.test(id)) return fail(400, 'photo id must be a slug')
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(Buffer.from(chunk))
+          const body = Buffer.concat(chunks)
+          if (body.length < 12 || body.toString('ascii', 0, 4) !== 'RIFF' || body.toString('ascii', 8, 12) !== 'WEBP') {
+            return fail(400, 'body is not a WebP')
+          }
+          await mkdir(resolve(root, 'presets', 'photos'), { recursive: true })
+          await writeFile(resolve(root, 'presets', 'photos', `${id}.webp`), body)
+          return ok(`presets/photos/${id}.webp`)
+        }
         if (req.method === 'DELETE' && url.startsWith(presets)) {
           const id = decode(url.slice(presets.length))
           if (!SLUG.test(id)) return fail(400, 'preset id must be a slug')
@@ -98,6 +113,12 @@ function presetWriter(): Plugin {
             if (body.length < 8 || body.readUInt32BE(0) !== 0x89504e47) return fail(400, 'body is not a PNG')
             await writeFile(resolve(root, 'out', `card-${id}.png`), body)
             return ok(`out/card-${id}.png`)
+          }
+          if (kind === 'photo') {
+            if (body.length < 12 || body.toString('ascii', 0, 4) !== 'RIFF') return fail(400, 'body is not a WebP')
+            await mkdir(resolve(root, 'out', 'photos'), { recursive: true })
+            await writeFile(resolve(root, 'out', 'photos', `${id}.webp`), body)
+            return ok(`out/photos/${id}.webp`)
           }
           if (kind === 'webm') {
             // EBML header: 1A 45 DF A3.

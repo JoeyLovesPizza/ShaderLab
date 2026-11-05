@@ -87,6 +87,16 @@ export const UNIFORMS = {
   u_speed: { kind: 'float', default: 1 },
   /** The family's direction, degrees. */
   u_angle: { kind: 'float', default: 20 },
+  // The Photo stage (SPEC.md §4): on/off, the fractional pyramid level
+  // sampled (0 = W/6 … 3 = W/80), how far the base leans to the photo, how
+  // much the masses still composite, and how much the W/16 luminance
+  // shapes the height field. The textures themselves bind by name.
+  u_photoOn: { kind: 'float', default: 0 },
+  u_photoLevel: { kind: 'float', default: 1 },
+  u_photoMix: { kind: 'float', default: 0 },
+  u_photoMassWeight: { kind: 'float', default: 1 },
+  u_photoHeight: { kind: 'float', default: 0 },
+  u_photoChromaCap: { kind: 'float', default: 0.18 },
   // State deltas (SPEC.md §4, State grammar): added to every mass's L, and
   // multiplied into every mass's chroma.
   u_exposure: { kind: 'float', default: 0 },

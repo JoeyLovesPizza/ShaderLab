@@ -3,6 +3,7 @@
  * npm run ship: hands the last "Export all" to the Portfolio.
  *   out/card-<id>.png      ->  Portfolio/public/work/shaders/card-<id>.webp  (via cwebp)
  *   out/card-<id>.webm     ->  Portfolio/public/work/shaders/card-<id>.webm and card-<id>.mp4 (via ffmpeg)
+ *   out/photos/<id>.webp   ->  Portfolio/public/work/shaders/photos/<id>.webp
  *   out/<id>.json          ->  Portfolio/public/shaders/<id>.json
  *   handoff/backgrounds.json -> Portfolio/public/shaders/backgrounds.json
  * Creates the folders, prints every file it wrote, touches nothing under
@@ -28,6 +29,9 @@ const jsonDir = resolve(portfolio, 'public', 'shaders')
 const show = (p) => p.replace(`${portfolio}/`, 'Portfolio/')
 
 const files = (await readdir(out)).filter((f) => f.endsWith('.png') || f.endsWith('.json') || f.endsWith('.webm'))
+// Photos exported alongside their cards, as they are (already WebP q88).
+const photosDir = resolve(out, 'photos')
+const photos = await readdir(photosDir).catch(() => [])
 if (files.length === 0) {
   console.log('out/ holds no .png or .json: run Export all in ShaderLab first')
   process.exit(1)
@@ -80,6 +84,14 @@ for (const file of files) {
     await copyFile(src, target)
     console.log(`${file}  ->  ${show(target)}`)
   }
+  count++
+}
+
+for (const file of photos.filter((f) => f.endsWith('.webp'))) {
+  const target = resolve(imgDir, 'photos', file)
+  await mkdir(resolve(imgDir, 'photos'), { recursive: true })
+  await copyFile(resolve(photosDir, file), target)
+  console.log(`photos/${file}  ->  ${show(target)}`)
   count++
 }
 

@@ -2,7 +2,10 @@ import { packUniforms } from '../model/pack'
 import type { CardDraft, Family, Preset } from '../model/types'
 import type { UniformValues } from './massesManifest'
 import { useSyncExternalStore } from 'react'
-import { createRenderer, onShaderSource, type Renderer } from './renderer'
+import { createRenderer, onShaderSource, percentiles, type PhotoLab, type PhotoTextures, type Renderer } from './renderer'
+import { srgbToOklab } from '../palette/ramp'
+import { PHOTO_SIGMAS } from '../model/photo'
+import { photoUrl } from '../export/photoStore'
 
 /*
  * The shared stage: one offscreen WebGL2 renderer that every card draws
@@ -21,11 +24,18 @@ export interface CardState {
   uniforms: UniformValues
   loopSeconds: number
   fps: number
+  /** The card's photo (presets/photos/<id>.webp), sampled by the field pass. */
+  photo?: { src: string } | null
 }
 
 export function cardStateFrom(preset: Preset, draft: CardDraft, family: Family): CardState {
   const aspect = preset.canvas.width / preset.canvas.height
-  return { uniforms: packUniforms(draft, family, aspect), loopSeconds: draft.loop.seconds, fps: preset.loop.fps }
+  return {
+    uniforms: packUniforms(draft, family, aspect),
+    loopSeconds: draft.loop.seconds,
+    fps: preset.loop.fps,
+    photo: draft.photo ? { src: draft.photo.src } : null,
+  }
 }
 
 export interface LiveOptions {
@@ -68,8 +78,53 @@ export interface StageStats {
 
 const wrap = (t: number, loop: number) => ((t % loop) + loop) % loop
 
+/** The photo at half size as encoded OKLab, the space the pyramid blurs in. */
+function toLab(bitmap: ImageBitmap): PhotoLab {
+  const w = Math.max(1, Math.round(bitmap.width / 2))
+  const h = Math.max(1, Math.round(bitmap.height / 2))
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('no 2D context')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(bitmap, 0, 0, w, h)
+  const data = ctx.getImageData(0, 0, w, h)
+  const px = data.data
+  // A small cache: a photo has far fewer distinct colours than pixels.
+  const seen = new Map<number, [number, number, number]>()
+  for (let i = 0; i < px.length; i += 4) {
+    const key = (px[i] << 16) | (px[i + 1] << 8) | px[i + 2]
+    let lab = seen.get(key)
+    if (!lab) {
+      const [L, a, b] = srgbToOklab([px[i] / 255, px[i + 1] / 255, px[i + 2] / 255])
+      lab = [L * 255, (a * 1.25 + 0.5) * 255, (b * 1.25 + 0.5) * 255]
+      seen.set(key, lab)
+    }
+    px[i] = lab[0]
+    px[i + 1] = lab[1]
+    px[i + 2] = lab[2]
+    px[i + 3] = 255
+  }
+  return { data, range: percentiles(px, 4) }
+}
+
+interface PhotoEntry {
+  lab: PhotoLab | null
+  bitmap: ImageBitmap | null
+  loading: Promise<void> | null
+  /** The pyramid on the current renderer, built on first use. */
+  textures: PhotoTextures | null
+  builtOn: Renderer | null
+  lastUsed: number
+}
+
+/** Photos kept decoded; the oldest pyramids go when more are around. */
+const PHOTO_CACHE = 12
+
 class Stage {
   private renderer: Renderer | null = null
+  private photos = new Map<string, PhotoEntry>()
   /** The one canvas the renderer lives on; kept across rebuilds since a
       canvas has one context for life. */
   private canvas: HTMLCanvasElement | null = null
@@ -88,8 +143,78 @@ class Stage {
     onShaderSource(() => this.rebuild())
   }
 
+  // --- Photos -------------------------------------------------------------------
+
+  /** Starts loading a photo if it is not here yet; resolves when it is. */
+  ensurePhoto(src: string): Promise<void> {
+    let entry = this.photos.get(src)
+    if (!entry) {
+      entry = { lab: null, bitmap: null, loading: null, textures: null, builtOn: null, lastUsed: performance.now() }
+      this.photos.set(src, entry)
+    }
+    if (entry.lab) return Promise.resolve()
+    if (!entry.loading) {
+      const e = entry
+      e.loading = (async () => {
+        const url = await photoUrl(src)
+        const blob = await (await fetch(url)).blob()
+        e.bitmap = await createImageBitmap(blob)
+        e.lab = toLab(e.bitmap)
+        e.bitmap.close()
+        e.loading = null
+        // Posters drawn without it are stale now.
+        this.version += 1
+        for (const l of this.versionListeners) l()
+        for (const target of this.live.keys()) this.redraw(target)
+      })().catch((err) => {
+        console.warn(`[ShaderLab] photo ${src} failed to load`, err)
+        e.loading = null
+      })
+    }
+    return entry.loading ?? Promise.resolve()
+  }
+
+  /** A photo was replaced under the same src (a new drop): forget the old one. */
+  forgetPhoto(src: string) {
+    const entry = this.photos.get(src)
+    entry?.textures?.dispose()
+    entry?.bitmap?.close()
+    this.photos.delete(src)
+  }
+
+  private photoTextures(r: Renderer, src: string): PhotoTextures | null {
+    const entry = this.photos.get(src)
+    if (!entry?.lab) {
+      void this.ensurePhoto(src)
+      return null
+    }
+    entry.lastUsed = performance.now()
+    if (!entry.textures || entry.builtOn !== r) {
+      entry.textures?.dispose()
+      entry.textures = r.buildPhoto(entry.lab, PHOTO_SIGMAS)
+      entry.builtOn = r
+      this.trimPhotos()
+    }
+    return entry.textures
+  }
+
+  private trimPhotos() {
+    if (this.photos.size <= PHOTO_CACHE) return
+    const oldest = [...this.photos.entries()].sort((a, b) => a[1].lastUsed - b[1].lastUsed)
+    for (const [src, entry] of oldest.slice(0, this.photos.size - PHOTO_CACHE)) {
+      entry.textures?.dispose()
+      entry.bitmap?.close()
+      this.photos.delete(src)
+    }
+  }
+
   /** Drop the renderer and have every poster and live target drawn again. */
   private rebuild() {
+    // Pyramids belong to the old renderer; they are rebuilt on first use.
+    for (const entry of this.photos.values()) {
+      entry.textures = null
+      entry.builtOn = null
+    }
     this.renderer?.dispose()
     this.renderer = null
     this.version += 1
@@ -166,6 +291,11 @@ class Stage {
 
     r.resize(w, h, { grow: true })
     r.setUniforms(state.uniforms)
+    // The photo's pyramid, or none while it is still loading (the card
+    // redraws when it lands); without it the stage is the plain card.
+    const photo = state.photo ? this.photoTextures(r, state.photo.src) : null
+    r.setPhoto(photo)
+    if (state.photo && !photo) r.setUniforms({ u_photoOn: 0, u_photoMix: 0, u_photoHeight: 0, u_photoMassWeight: 1 })
     r.draw({
       time: wrap(time, state.loopSeconds),
       loopSeconds: state.loopSeconds,

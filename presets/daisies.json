@@ -1,0 +1,266 @@
+{
+  "base": {
+    "chroma": 0.0565,
+    "hue": 255.6,
+    "locked": false,
+    "value": 0.7341
+  },
+  "canvas": {
+    "dpr": 2,
+    "height": 408,
+    "width": 613
+  },
+  "captionMask": false,
+  "depth": {
+    "curve": {
+      "amount": 0.2657,
+      "on": true
+    },
+    "haze": {
+      "amount": 0.331,
+      "on": true
+    },
+    "light": {
+      "height": 1.5236,
+      "on": false
+    },
+    "parallax": {
+      "amount": 0.6277,
+      "on": true
+    },
+    "relief": {
+      "amount": 0.2629,
+      "frequency": 85,
+      "on": true,
+      "twist": 6
+    },
+    "shadow": {
+      "amount": 0.5,
+      "offset": 0,
+      "on": false,
+      "rect": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "spread": 0
+    },
+    "strokes": {
+      "amount": 0.0247,
+      "chaos": 0,
+      "density": 14,
+      "direction": 20,
+      "follow": 0.3,
+      "followAngle": true,
+      "motion": 0.5,
+      "on": false,
+      "size": 0.35,
+      "taper": 0.25
+    },
+    "swirl": {
+      "amount": 0.294,
+      "on": false,
+      "scale": 0.6
+    }
+  },
+  "finish": {
+    "layerBlur": {
+      "intensity": 0.6519,
+      "on": false,
+      "radius": 0.0419
+    },
+    "motionBlur": {
+      "angle": 20,
+      "followAngle": true,
+      "intensity": 0.6163,
+      "length": 0.0742,
+      "on": true
+    }
+  },
+  "id": "daisies",
+  "image": null,
+  "loop": {
+    "fps": 30,
+    "seconds": 12,
+    "stillTime": 6
+  },
+  "masses": [
+    {
+      "chroma": 0.0146,
+      "distance": 0.4,
+      "hue": 21.1,
+      "kind": "blob",
+      "locked": false,
+      "path": {
+        "control1": {
+          "x": 0.84,
+          "y": 0.59
+        },
+        "control2": {
+          "x": 0.84,
+          "y": 0.59
+        },
+        "end": {
+          "x": 1.24,
+          "y": 0.79
+        },
+        "start": {
+          "x": 0.44,
+          "y": 0.39
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.0146,
+          "hue": 21.1,
+          "value": 0.9
+        },
+        "fieldMix": 0,
+        "start": {
+          "chroma": 0.0146,
+          "hue": 21.1,
+          "value": 0.9
+        }
+      },
+      "size": 0.56,
+      "softness": 0.7,
+      "value": 0.9,
+      "x": 0.84,
+      "y": 0.59
+    },
+    {
+      "chroma": 0.0213,
+      "distance": 0.7,
+      "hue": 42.2,
+      "kind": "blob",
+      "locked": false,
+      "path": {
+        "control1": {
+          "x": 0.72,
+          "y": 0.44
+        },
+        "control2": {
+          "x": 0.72,
+          "y": 0.44
+        },
+        "end": {
+          "x": 1.12,
+          "y": 0.64
+        },
+        "start": {
+          "x": 0.32,
+          "y": 0.24
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.0213,
+          "hue": 42.2,
+          "value": 0.8835
+        },
+        "fieldMix": 0,
+        "start": {
+          "chroma": 0.0213,
+          "hue": 42.2,
+          "value": 0.8835
+        }
+      },
+      "size": 0.47,
+      "softness": 0.7,
+      "value": 0.8835,
+      "x": 0.72,
+      "y": 0.44
+    },
+    {
+      "chroma": 0.0367,
+      "distance": 0.7,
+      "hue": 270.3,
+      "kind": "blob",
+      "locked": false,
+      "path": {
+        "control1": {
+          "x": 0.59,
+          "y": 0.43
+        },
+        "control2": {
+          "x": 0.59,
+          "y": 0.43
+        },
+        "end": {
+          "x": 0.99,
+          "y": 0.63
+        },
+        "start": {
+          "x": 0.19,
+          "y": 0.23
+        }
+      },
+      "ramp": {
+        "end": {
+          "chroma": 0.0367,
+          "hue": 270.3,
+          "value": 0.8124
+        },
+        "fieldMix": 0,
+        "start": {
+          "chroma": 0.0367,
+          "hue": 270.3,
+          "value": 0.8124
+        }
+      },
+      "size": 0.3,
+      "softness": 0.7,
+      "value": 0.8124,
+      "x": 0.59,
+      "y": 0.43
+    }
+  ],
+  "meta": {
+    "created": "2026-11-04",
+    "name": "Daisies"
+  },
+  "modes": {
+    "bold": true,
+    "colour": "warm-cool",
+    "coverage": "block",
+    "structure": "relief"
+  },
+  "photo": {
+    "fidelity": 0.5,
+    "src": "photos/daisies.webp"
+  },
+  "schema": 2,
+  "seed": 362871,
+  "shader": "masses@1",
+  "states": {
+    "active": {
+      "transition": {
+        "duration": 0.6,
+        "durationOut": 0.9,
+        "ease": "inOut"
+      },
+      "uniforms": {
+        "u_contrast": 0.9,
+        "u_exposure": 0.15
+      }
+    },
+    "hover": {
+      "transition": {
+        "duration": 0.3,
+        "durationOut": 0.45,
+        "ease": "out"
+      },
+      "uniforms": {
+        "u_exposure": 0.08
+      }
+    },
+    "idle": {
+      "loop": true,
+      "uniforms": {}
+    }
+  },
+  "texture": {
+    "grain": 0.0628
+  }
+}

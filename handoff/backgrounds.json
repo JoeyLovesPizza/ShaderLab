@@ -12,7 +12,7 @@
       "name": "Dash",
       "file": "/work/shaders/card-dash.webp",
       "preset": "/shaders/dash.json",
-      "shadowColor": "#B890AB",
+      "shadowColor": "#BE95B0",
       "palette": "light base, warm-cool colour, blend coverage, relief, 2 masses"
     },
     {
@@ -20,7 +20,7 @@
       "name": "Dropbox meetings",
       "file": "/work/shaders/card-dropbox-meetings.webp",
       "preset": "/shaders/dropbox-meetings.json",
-      "shadowColor": "#A34356",
+      "shadowColor": "#A34154",
       "palette": "light base, warm-cool colour, blend coverage, no structure, 2 masses"
     },
     {
@@ -28,15 +28,23 @@
       "name": "Human In the Loop",
       "file": "/work/shaders/card-human-in-the-loop.webp",
       "preset": "/shaders/human-in-the-loop.json",
-      "shadowColor": "#AC8755",
+      "shadowColor": "#936F3C",
       "palette": "dark base, mono colour, blend coverage, no structure, 2 masses"
+    },
+    {
+      "id": "painted-grass",
+      "name": "Painted grass",
+      "file": "/work/shaders/card-painted-grass.webp",
+      "preset": "/shaders/painted-grass.json",
+      "shadowColor": "#7D874A",
+      "palette": "light base, mono colour, blend coverage, strokes, 2 masses"
     },
     {
       "id": "paper",
       "name": "Paper",
       "file": "/work/shaders/card-paper.webp",
       "preset": "/shaders/paper.json",
-      "shadowColor": "#4B6889",
+      "shadowColor": "#3E5C7C",
       "palette": "dark base, warm-cool colour, blend coverage, no structure, 2 masses"
     },
     {
@@ -44,16 +52,33 @@
       "name": "Showreel",
       "file": "/work/shaders/card-showreel.webp",
       "preset": "/shaders/showreel.json",
-      "shadowColor": "#624D41",
+      "shadowColor": "#5D473C",
       "palette": "light base, mono colour, blend coverage, relief, 2 masses"
+    },
+    {
+      "id": "silk-fold",
+      "name": "Silk fold",
+      "file": "/work/shaders/card-silk-fold.webp",
+      "preset": "/shaders/silk-fold.json",
+      "shadowColor": "#CD755C",
+      "palette": "light base, free colour, block coverage, no structure, 1 masses"
     },
     {
       "id": "wildflower",
       "name": "Wildflower",
       "file": "/work/shaders/card-wildflower.webp",
       "preset": "/shaders/wildflower.json",
-      "shadowColor": "#A87762",
+      "shadowColor": "#A06F5B",
       "palette": "light base, free colour, blend coverage, no structure, 3 masses"
+    },
+    {
+      "id": "daisies",
+      "name": "Daisies",
+      "file": "/work/shaders/card-daisies.webp",
+      "preset": "/shaders/daisies.json",
+      "shadowColor": "#DCD5D5",
+      "palette": "light base, warm-cool colour, block coverage, relief, 2 masses",
+      "photo": "/work/shaders/photos/daisies.webp"
     }
   ]
 }

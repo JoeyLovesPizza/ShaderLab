@@ -42,6 +42,7 @@ export async function exportWebm(preset: Preset, state: CardState, options: Webm
     framerate: fps,
     latencyMode: 'quality',
   }
+  if (state.photo) await stage.ensurePhoto(state.photo.src)
   const support = await VideoEncoder.isConfigSupported(config)
   if (!support.supported) throw new Error(`VP9 at ${width} × ${height} is not supported by this browser's encoder`)
 
