@@ -134,9 +134,32 @@ Still open:
 
 Hue is degrees in OKLCH, value is OKLCH L, chroma is OKLCH C. Positions are card units (x 0..1.5, y 0..1 for 613×408; lights may sit outside). `image` is `null` for a card built from the family alone. `states.idle` is the base; other states are deltas on top of it (hover: every light's value +0.08; active: +0.15 and chroma ×0.9), so a preset with no `states` block still works. Transition timing uses Motion's vocabulary so path B can hand it straight to `animate()`. `family.json` holds the locks and bounds the shuffle respects: base value range, light count, size range, position bounds (right side), drift radius, which depth layers are on, and their amount ranges.
 
-### Image grammar (week one)
+### Photo stage (Joe, 2026-11-03: "drop in photos and process them with the shader toolkit; the result should be something in between the photo and what we have built here")
 
-Character only, confirmed by Joe. Under the lights model an image contributes colours and light placement, never pixels: the darkest large cluster becomes the base, the two brightest become lights at the centroids of their regions, mapped into the family's position bounds. Fidelity 0..0.6 sets how far the extracted positions and chroma may depart from the family defaults; above 0.6 is a detent for one deliberate card. A visible picture is compose mode.
+This supersedes the earlier "character only" image grammar. A photo is now a first-class input and the picture may stay visible. The card is a point on a continuum from the photograph to the abstract field, set by one dial, **fidelity** 0..1:
+
+- The photo is loaded as a texture (cover-fit to the card) and a blur pyramid of it. Fidelity picks the blur level and the mix: low fidelity is the heavily blurred photo as colour and light placement only, with the toolkit's masses on top; high fidelity keeps edges and texture and the toolkit works *on* the photo rather than replacing it.
+- The photo's luminance feeds the **height field**, so Light shades its forms and the pleats, strokes and curve respond to them.
+- On drop, masses are **extracted** from the photo (dominant clusters, placed at their centroids) as editable starting points, so every other dial keeps working.
+- **Strokes** follow the photo's edges (perpendicular to its luminance gradient) when follow is on, so the marks paint the picture.
+- Grain, Finish blurs, Haze and motion apply as before. On the loop the photo itself does not swim: what moves is the light, the masses laid over it, the strokes, and a slow drift of the blur; see the Critic's grammar below.
+- Storage: the dropped file is downscaled to card export size (1226×816) and saved beside the preset as `presets/photos/<id>.webp` (small, tracked); the preset references it by path. In the hosted build it lives in IndexedDB and downloads with the preset. Full-resolution masters never enter the repo.
+
+**The continuum (Critic).** The two ends of the useful range are the Pioneer dusk (a horizon reduced to three bands under grain, UI on the calm band) and the daisies (white masses with yellow cores on blue, blurred past any petal).
+
+| Fidelity | Name | Survives | Toolkit adds |
+|---|---|---|---|
+| 0.2 | weather | palette, where the light sits; two or three extracted masses | everything else: Light on the masses, grain, drift. A stranger could not name the subject |
+| 0.5 (default) | Pioneer | large forms as a blurred field (σ ≈ W/16), Light shades those forms | extracted masses at half strength, strokes along the dominant edge at low amount, grain full. A horizon or a field of flowers, no petal |
+| 0.8 | daisies | forms and soft edges (σ ≈ W/40), no texture | masses off or a quarter strength as colour correction, Light at half, strokes off, grain full. A photo through frosted glass |
+
+**Mechanism** (retuned after the first daisies render, where white covered most of the frame and every area-weighted step landed near white). Four-level blur pyramid (σ = W/10, W/22, W/50, W/80), built once per photo, blurred in OKLab (not linear light, or highlights swallow everything), each level auto-levelled back to the original's P5–P95 lightness range (global, so no halo) and its chroma restored ×1.3 under the family cap (blur averages chroma toward grey). Extraction at W/22: k-means k=5 in OKLab, keep three scored by area × (0.3 + 4·C) so a small saturated cluster beats a big white one, chroma ×1.4 clamped to 0.18, L clamped 0.2–0.9; the largest, darkest cluster becomes the base, so the base comes from the photo at any fidelity above 0. Shader order: sample the pyramid at the level fidelity selects, blending adjacent levels (0.2 → W/10, 0.5 → W/22, 0.8 → W/50); base mix 0.25 / 0.6 / 0.9; masses at weight 1.0 / 0.6 / 0.25; height from the photo's luminance 0.3 / 1.0 / 0.7 so Light shades the photo's own forms even at 0.2; light scale 1.0 / 1.0 / 0.6; strokes' direction field is perpendicular to the photo's luminance gradient, so marks paint along ridges and horizons; haze, swirl, blurs and grain unchanged.
+
+**Never.** No detail from levels finer than W/40. No local contrast or unsharp mask (the HDR halo). No vignette, no colour LUT, no warm/cool shift on the photo itself: colour changes come from masses, not grading (the filter trap). Swirl above 0.1 makes a still photo swim.
+
+**What moves.** Not the photo. Masses drift on their circles, Light's direction breathes by 2°, strokes' presence slides. The sky is still; the light on it is alive.
+
+**Cohesion.** Same pyramid levels and σ per fidelity point, same Light, grain and drift, and the extracted palette passes through the family chroma cap and tonal rules. Six photos become six subjects shot on one film stock under one lamp.
 
 ### State grammar (Critic, restated for lights)
 
@@ -205,6 +228,8 @@ The card's own sequence (idle → hover → active → back) is defined in the p
 
 ## 7. Phases
 
+Status now lives in `BACKLOG.md`. What follows is the original day-one plan, kept for its reasoning.
+
 **Day one (today).**
 1. Repo scaffold, tokens, launch config, DialKit pinned.
 2. `useShaderCanvas` hook with one `flow-field@1` shader: FBM field, grain, vignette, caption mask, ramp-over-field, circular periodic time.
@@ -220,8 +245,10 @@ The card's own sequence (idle → hover → active → back) is defined in the p
 ## 8. Roles and rhythm
 
 - **Planner** holds this spec, sequences the work, and is the only agent that talks to Joe. Every Builder hand-off is one phase step with a definition of done.
-- **Critic** reviews each step's output against section 2 before it is called done, and reviews every new preset on the Portfolio page, not in the tool.
-- **Builder** executes steps, reuses the map in section 5, and reports performance numbers (fps at six thumbnails plus one focused card, on this Mac) with every rendering change.
+- **Critic** reviews a new look against section 2 when it is ready to merge, not after every step.
+- **Builder** executes one job, reuses the map in section 5, and reports performance numbers (fps at six thumbnails plus one focused card, on this Mac) with every rendering change.
+
+Each Builder and Critic is a fresh agent per job, never one resumed across jobs, and small fixes are done inline with no agent. The full cost rules are in CLAUDE.md, "Working cheaply".
 
 Critic's verdict gates the day-one cut: a card that looks right in ShaderLab but makes the page's aura muddy is not done.
 

@@ -1,0 +1,47 @@
+# Backlog
+
+What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-04.
+
+## In flight
+
+### Photo stage (branch `lab`, commit `8db03e9`, pushed, not merged)
+Joe's ask: drop in a photo and process it with the toolkit, so the card lands somewhere between the photo and the abstract field (SPEC.md §4, "Photo stage" and "The continuum").
+
+Done on the branch:
+- Drop a photo on a card or the grid, or pick one in the panel's Photo folder. It's cover-fit to 1226×816 and saved as WebP to `presets/photos/<id>.webp` in dev, or to IndexedDB on the hosted site.
+- A four-level blur pyramid in OKLab, with each level auto-levelled and its chroma restored. Extraction runs k-means on the W/22 level.
+- Fidelity tables in `src/model/photo.ts`, plus PNG and WebM export, ship, the manifest, and schema family version 7 with an overlay test.
+- `npm run check` is green with 79 tests.
+- The pixel test passes. The washed-out look was the photo uploading upside down, not a colour-space bug.
+
+Open:
+- **At fidelity 0.2 and 0.5 the daisies are near-white.** The three masses kept are petal whites (L 0.81–0.90, C ≤ 0.04), and at weight 1.0 and 0.6 they cover the sky-blue base. Fix the mass score in extraction: weight by contrast with the base (lightness and chroma distance), not area alone, so a white that matches most of the frame loses to the sky and the yellow centres. Re-render at 0.2, 0.5 and 0.8.
+- **Test with Joe's own photos.** None are in `reference/` yet; ask for two or three with a clear light source and large forms.
+- Then call one fresh Critic on the three fidelity points, merge `lab` into main, run `npm install` on main, `npm run check`, push, `npm run deploy`, and remove the worktree and branch.
+
+## Next
+- **Video clips per state.** Each preset's `states` block (idle, hover, active) is previewed in Focus. Export should write one loop per state, idle and active only (SPEC.md §4, runtime path A).
+- **Live `ShaderCard` package (path B).** A component that Portfolio or any site can import, with measured performance numbers, behind a flag and with video as the fallback (SPEC.md §9).
+
+## Later
+- **Compose mode.** Images, text and code snippets layered over a finished background, each animated on a timeline. This is Joe's long-term goal and the second of his two assets.
+- An editor timeline, and GIF export.
+
+## Waiting on Joe
+- **Silk-fold reference image.** It never reached disk. Drop it into `reference/texture-silk-fold.webp`.
+- **The `workflow` scope on the gh CLI token** (`gh auth refresh -h github.com -s workflow`). With it, `deploy/pages.yml` moves back to `.github/workflows/` and deploys run automatically on merge to main. Until then, run `npm run deploy` by hand.
+- **Wiring backgrounds into Portfolio cards.** Joe's own agent does this from `handoff/`. A background shows only once the card's UI art is exported with a transparent surround; the current Figma exports are opaque.
+
+## Known issues
+- The smoke script borrows Playwright and Chromium from the sibling `HITL` repo, or from `PLAYWRIGHT_ROOT`. Port 5181 is sometimes held by CaseFilms, so the smoke falls back to another port.
+- The WebM loop seam carries about 2/255 of codec drift between the last and first frames. That's quality drift, not motion. QuickTime cannot play VP9, which is why ship also writes MP4.
+- The Strokes painted-grass preset is close to its reference but not identical. The Critic last called it "fibres, smeared", which was acceptable.
+- Four lint warnings predate the photo work (ref-in-render, setState-in-effect), in the same pattern Portfolio uses.
+
+## Landed
+| Date | What |
+|---|---|
+| 2026-10-28 | Repo, spec, the masses model, colour pickers, shuffle with colour, coverage and structure modes, grid, rail, focus, PNG export, six project presets |
+| 2026-10-29 | WebP ship, agent handoff, visible motion with one Motion dial, Grid layer cut, hand-edited values protected from shuffles |
+| 2026-11-02 | QA stability pass, `npm run check`, preset library, hosted site on GitHub Pages, Light (lit height field), Strokes, ridge masses, the panel on the hosted build, animated strokes |
+| 2026-11-03 | Cubic ridge with field mix (silk fold), WebM export with MP4 on ship, browser overlays migrated like files, Strokes as brush marks with chaos and follow |
