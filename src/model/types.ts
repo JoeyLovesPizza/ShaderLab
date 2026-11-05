@@ -199,6 +199,19 @@ export interface PresetLoop {
   stillTime: number
 }
 
+/**
+ * The Photo stage (SPEC.md §4): a photo under the field, cover-fitted to
+ * the card and kept as presets/photos/<id>.webp (never a data URL). One
+ * dial, fidelity 0..1, runs the continuum from the toolkit's own card to
+ * the photo: which pyramid level is sampled, how far the base leans
+ * toward it, how much the masses still show, how much its luminance
+ * shapes the height field.
+ */
+export interface PresetPhoto {
+  src: string
+  fidelity: number
+}
+
 export interface PresetImage {
   src: string
   fidelity: number
@@ -245,6 +258,7 @@ export interface Preset {
   finish: Finish
   captionMask: boolean
   image: PresetImage | null
+  photo?: PresetPhoto | null
   states?: Partial<Record<StateName, PresetState>>
   meta: PresetMeta
 }
@@ -252,7 +266,7 @@ export interface Preset {
 /** The part of a preset the panel and the shuffle edit. */
 export type CardDraft = Pick<
   Preset,
-  'seed' | 'modes' | 'base' | 'masses' | 'texture' | 'depth' | 'finish' | 'captionMask' | 'loop'
+  'seed' | 'modes' | 'base' | 'masses' | 'texture' | 'depth' | 'finish' | 'captionMask' | 'loop' | 'photo'
 >
 
 export type Range = [number, number]

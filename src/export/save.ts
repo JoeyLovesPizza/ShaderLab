@@ -5,6 +5,7 @@ import { validatePreset } from '../model/validate'
 import { download } from './download'
 import { API_BASE, whenProbed } from './mode'
 import { presetFromCard, serializePreset } from './preset'
+import { photoBlob } from './photoStore'
 
 /*
  * "Save to file": the card's draft, over its preset, validated, written to
@@ -24,6 +25,12 @@ export async function saveCard(preset: Preset): Promise<string> {
   const json = serializePreset(result.value)
   if (await whenProbed()) {
     download(new Blob([json], { type: 'application/json' }), `${preset.id}.json`)
+    // The photo rides along as a sidecar, named as the preset expects it.
+    if (draft.photo) {
+      await new Promise((r) => setTimeout(r, 250))
+      download(await photoBlob(draft.photo.src), `${preset.id}.webp`)
+      return `downloaded ${preset.id}.json and ${preset.id}.webp (hosted build: drop them into presets/ and presets/photos/)`
+    }
     return `downloaded ${preset.id}.json (hosted build: drop it into presets/)`
   }
   // The card stands for its file from here, before the write, so the

@@ -48,6 +48,7 @@ export function draftOf(preset: Preset): CardDraft {
     finish: preset.finish,
     captionMask: preset.captionMask,
     loop: preset.loop,
+    photo: preset.photo ?? null,
   })
 }
 

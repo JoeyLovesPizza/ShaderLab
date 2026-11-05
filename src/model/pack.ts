@@ -1,5 +1,6 @@
 import { oklchToLab } from '../palette/ramp'
 import { MAX_MASSES, defaultUniforms, type UniformValues } from '../shader/massesManifest'
+import { PHOTO_SWIRL_MAX, photoParams } from './photo'
 import { mulberry32 } from './shuffle'
 import { withMassShape, type CardDraft, type Family } from './types'
 
@@ -96,10 +97,20 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_lightAngle = family.light.followAngle ? family.motion.angle : family.light.angle
   u.u_lightElevation = family.light.elevation
   u.u_lightAmount = family.light.amount
+  // The Photo stage: the continuum's numbers from the one fidelity dial.
+  const photo = draft.photo ? photoParams(draft.photo.fidelity) : null
+  u.u_photoOn = photo ? 1 : 0
+  u.u_photoLevel = photo?.level ?? 1
+  u.u_photoMix = photo?.mix ?? 0
+  u.u_photoMassWeight = photo?.massWeight ?? 1
+  u.u_photoHeight = photo?.height ?? 0
+  u.u_photoChromaCap = family.masses.chromaMax
+  if (photo) u.u_lightAmount = family.light.amount * photo.lightScale
   u.u_curve = amount(d.curve)
   u.u_parallax = amount(d.parallax)
   u.u_haze = amount(d.haze)
-  u.u_swirl = amount(d.swirl)
+  // With a photo under it the swirl's warp is clamped (SPEC.md §4 guardrails).
+  u.u_swirl = draft.photo ? Math.min(amount(d.swirl), PHOTO_SWIRL_MAX) : amount(d.swirl)
   u.u_swirlScale = d.swirl.scale
   u.u_relief = amount(d.relief)
   u.u_reliefFreq = d.relief.frequency

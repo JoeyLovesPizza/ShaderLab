@@ -169,6 +169,7 @@
     "coverage": "blend",
     "structure": "none"
   },
+  "photo": null,
   "schema": 2,
   "seed": 3,
   "shader": "masses@1",

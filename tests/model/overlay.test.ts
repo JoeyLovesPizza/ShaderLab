@@ -60,6 +60,12 @@ const SHAPES: Record<string, (draft: Obj) => void> = {
     strokes.length = 0.7
     strokes.density = 150
   },
+  'no photo key (before the Photo stage)': (d) => {
+    delete d.photo
+  },
+  'with a photo': (d) => {
+    d.photo = { src: 'photos/daisies.webp', fidelity: 0.5 }
+  },
   'everything at once': (d) => {
     delete d.finish
     delete (d.depth as Obj).light
@@ -94,6 +100,7 @@ describe('overlays from earlier builds', () => {
         expect(draft.depth.light).toBeDefined()
         expect(draft.depth.strokes.motion).toBeTypeOf('number')
         expect(draft.depth.strokes.chaos).toBeTypeOf('number')
+        expect(draft.photo === null || typeof draft.photo.fidelity === 'number').toBe(true)
         expect(draft.depth.strokes.size).toBeTypeOf('number')
         expect(draft.depth.strokes.density).toBeLessThanOrEqual(60)
         for (const m of draft.masses) {

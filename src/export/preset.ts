@@ -57,6 +57,7 @@ export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTi
       shadow: { ...d.shadow, amount: r(d.shadow.amount), rect: d.shadow.rect.map((n) => r(n)) as [number, number, number, number] },
     },
     captionMask: draft.captionMask,
+    photo: draft.photo ? { src: draft.photo.src, fidelity: r(draft.photo.fidelity) } : null,
     loop: { ...preset.loop, seconds: loop.loopSeconds, stillTime: loop.stillTime },
   }
 }

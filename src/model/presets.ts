@@ -53,6 +53,7 @@ export function blankPreset(id: string, name: string): Preset {
     },
     captionMask: false,
     image: null,
+    photo: null,
     states: {
       idle: { uniforms: {}, loop: true },
       hover: { uniforms: { u_exposure: 0.08 }, transition: { duration: 0.3, ease: 'out', durationOut: 0.45 } },

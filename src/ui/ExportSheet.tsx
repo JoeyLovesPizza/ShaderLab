@@ -8,7 +8,7 @@ import { WEBM_UNSUPPORTED, canExportWebm, exportWebm } from '../export/webm'
 import { API_BASE, whenProbed } from '../export/mode'
 import { validatePreset } from '../model/validate'
 import { getFamily } from '../model/family'
-import { cardStateFrom } from '../shader/stage'
+import { cardStateFrom, stage } from '../shader/stage'
 
 /*
  * The Export sheet, over Focus (SPEC.md §6). Poster frame, loop length and
@@ -54,6 +54,7 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
       // The idle state, whatever the switcher shows: the exported poster
       // never carries a hover or active lift.
       const idle = cardStateFrom(result.value, handle.getDraft(), getFamily())
+      if (idle.photo) await stage.ensurePhoto(idle.photo.src)
       if (png) {
         const blob = await exportPng(result.value, idle, { scale: 2, time: stillTime })
         download(blob, `card-${project}.png`)
