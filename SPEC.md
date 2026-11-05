@@ -245,12 +245,12 @@ Status now lives in `BACKLOG.md`. What follows is the original day-one plan, kep
 ## 8. Roles and rhythm
 
 - **Planner** holds this spec, sequences the work, and is the only agent that talks to Joe. Every Builder hand-off is one phase step with a definition of done.
-- **Critic** reviews a new look against section 2 when it is ready to merge, not after every step.
+- **Critic** gives a verdict on finished renders against section 2: does it match, and what looks off, in words. It does not set formulas, constants or mechanisms; those come from a Builder measuring real pixels. The Critic sees screenshots, not data, and its guessed photo-extraction score is what washed out the daisies (2026-11-04). Called only when Joe wants a second eye on a new look; a before/after Joe can judge himself does not need one.
 - **Builder** executes one job, reuses the map in section 5, and reports performance numbers (fps at six thumbnails plus one focused card, on this Mac) with every rendering change.
 
 Each Builder and Critic is a fresh agent per job, never one resumed across jobs, and small fixes are done inline with no agent. The full cost rules are in CLAUDE.md, "Working cheaply".
 
-Critic's verdict gates the day-one cut: a card that looks right in ShaderLab but makes the page's aura muddy is not done.
+A Critic verdict, or Joe's own, gates the day-one cut: a card that looks right in ShaderLab but makes the page's aura muddy is not done.
 
 ## 9. Performance: the two runtime paths
 

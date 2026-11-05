@@ -24,7 +24,7 @@ A generator for animated shader backgrounds for the Portfolio carousel cards (`.
 - Every preset schema change (a field added, renamed, reshaped, in `types.ts`) ships with three things: a migration in `validate.ts` (`withDefaults` / `withMassDefaults`, so an older file or overlay loads with a warning, never as invalid), a bump of `meta.version` in `presets/family.json` and `DEFAULT_FAMILY` (the card store clears stale localStorage overlays once on the next load), and a case in `tests/model/overlay.test.ts` for the shape being left behind. Overlays and library cards go through `migrateOverlay` on every load; nothing renders a draft that has not passed the validator.
 
 ## Roles
-The session talking to Joe is the Planner: it holds SPEC.md and BACKLOG.md, sequences the work, and is the only one that talks to Joe. A Builder executes one job. A Critic reviews a look against SPEC.md §2 and the images in `reference/`.
+The session talking to Joe is the Planner: it holds SPEC.md and BACKLOG.md, sequences the work, and is the only one that talks to Joe. A Builder executes one job. A Critic gives a verdict in words on a finished render against SPEC.md §2 and the images in `reference/`. It never sets numbers or mechanisms; treat any it offers as a suggestion for a Builder to measure, not a spec decision.
 
 ## Working cheaply (Joe, 2026-11-04)
 The first two weeks burned through usage credits. The cause was process, not the work: one Builder agent ran for thirty jobs and re-read its whole history on every resume, which cost 500k–900k tokens a round by the end, including one-line fixes. These rules exist so that does not happen again.
@@ -32,7 +32,7 @@ The first two weeks burned through usage credits. The cause was process, not the
 - **One fresh agent per job.** Never resume a Builder or Critic across jobs. Brief a new one with the job, the files, and what done looks like, and point it at SPEC.md, BACKLOG.md and this file instead of retyping them.
 - **Do small things inline.** A handful of edits, a one-line fix, a config change: do it in the session, with no agent.
 - **Pick the model for the job.** Sonnet for mechanical work (plumbing, migrations, tests, wiring, export). A bigger model only for shader maths and look-tuning judgement.
-- **Critic at milestones only.** Call one when a new look is ready to merge, not after every step. Start it fresh, hand it the screenshot and reference paths, and cap the answer at about 300 words.
+- **Critic rarely.** Only for a new look Joe wants a second eye on, never for a before/after he can judge himself, never after every step. Start it fresh, hand it the screenshot and reference paths, and cap the answer at about 300 words.
 - **Verify cheaply.** Prefer page text, DOM queries and pixel checks to screenshots. One screenshot per decision Joe has to see, not one per step.
 - **Run `npm run check` once, at the end of a job.** The smoke is the expensive part. Use `tsc` and the vitest suite while iterating.
 - **Run agents in parallel only when the work is independent.**

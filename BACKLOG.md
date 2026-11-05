@@ -16,7 +16,7 @@ Done:
 
 Open:
 - **Test with Joe's own photos.** None are in `reference/` yet; ask for two or three with a clear light source and large forms. A photo with one large, compact form is the case the compactness rule hasn't been tried on.
-- Then call one fresh Critic on the three fidelity points, merge into main, run `npm install` on main, `npm run check`, push, `npm run deploy`, and remove the `lab` and `backlog-work-102406` worktrees and branches.
+- Then Joe judges the before/after sheet (no Critic pass), merge into main, run `npm install` on main, `npm run check`, push, `npm run deploy`, and remove the `lab` and `backlog-work-102406` worktrees and branches.
 
 ## Next
 - **Video clips per state.** Each preset's `states` block (idle, hover, active) is previewed in Focus. Export should write one loop per state, idle and active only (SPEC.md §4, runtime path A).
