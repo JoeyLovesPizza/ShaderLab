@@ -1,6 +1,6 @@
 # Backlog
 
-What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-04.
+What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-06.
 
 ## In flight
 
@@ -18,7 +18,17 @@ Open:
 - **Test with Joe's own photos.** None are in `reference/` yet; ask for two or three with a clear light source and large forms. A photo with one large, compact form is the case the compactness rule hasn't been tried on.
 - Then Joe judges the before/after sheet (no Critic pass), merge into main, run `npm install` on main, `npm run check`, push, `npm run deploy`, and remove the `lab` and `backlog-work-102406` worktrees and branches.
 
-## Next
+## Next: projects and backgrounds (SPEC.md §4, "Projects and backgrounds")
+Joe, 2026-11-06: the cards all feel alike, and he wants to set how alike, per project, with many backgrounds per project. Five jobs, in order, one fresh Builder each:
+1. **Schema** (in flight): project files, `project` and `overrides` on backgrounds, inheritance, `housePull` and `spread` fields, migration of the nine cards, family version 8.
+2. **Spread and House pull** in the shuffle, and New background inside a project.
+3. **Browse grouped by project**, a project panel, linked/overridden marks and Relink.
+4. **Motion per project and per mass**: loop length, speed, travel; per-mass path shape, scale pulse, colour shift. Shader work, bigger model.
+5. **Handoff and ship** for several backgrounds per project; `primary` ships, the rest are alternates.
+
+Then: new shape kinds (bands, lines, edges, flow fields).
+
+## Next, after that
 - **Video clips per state.** Each preset's `states` block (idle, hover, active) is previewed in Focus. Export should write one loop per state, idle and active only (SPEC.md §4, runtime path A).
 - **Live `ShaderCard` package (path B).** A component that Portfolio or any site can import, with measured performance numbers, behind a flag and with video as the fallback (SPEC.md §9).
 

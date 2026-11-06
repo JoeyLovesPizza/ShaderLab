@@ -134,6 +134,20 @@ Still open:
 
 Hue is degrees in OKLCH, value is OKLCH L, chroma is OKLCH C. Positions are card units (x 0..1.5, y 0..1 for 613×408; lights may sit outside). `image` is `null` for a card built from the family alone. `states.idle` is the base; other states are deltas on top of it (hover: every light's value +0.08; active: +0.15 and chroma ×0.9), so a preset with no `states` block still works. Transition timing uses Motion's vocabulary so path B can hand it straight to `animate()`. `family.json` holds the locks and bounds the shuffle respects: base value range, light count, size range, position bounds (right side), drift radius, which depth layers are on, and their amount ranges.
 
+### Projects and backgrounds (Joe, 2026-11-06: "the tooling can be consistent for groups of cards while I have the ability to push and pull that differentiation myself")
+
+The cards were too alike because one family set the motion, the light and the bounds for every card, with one card per project and one Variety dial for all of them. Similarity is now Joe's call, set per project, at three levels, each inheriting from the one above and each overridable below:
+
+- **House** (`presets/family.json`, the old family): optional shared rules. Its new **House pull** (`housePull`, 0..1, default 0.5) says how strongly projects are drawn toward the house. At 0, projects are independent.
+- **Project** (`presets/projects/<id>.json`, one per Portfolio project): that project's look, a `style` holding the same stages a card has (base, masses, texture, depth, modes), plus **Spread** (`spread`, 0..1, default 0.4), how far a new background or a shuffle may stray from the style, and `primary`, the background that ships.
+- **Background** (`presets/<id>.json`, today's preset file plus `project` and `overrides`): one card. It stays a full preset, so the renderer, the pack and export see resolved values. `overrides` lists the stage paths it has taken for itself; every other path is linked and follows the project's style.
+
+Link granularity, version one: `base`, `masses`, `texture`, `modes`, and each `depth.<layer>`. `photo`, `seed`, `loop`, `states`, `canvas` and `captionMask` always belong to the background. An edit to a linked path in a background marks it overridden; "Relink" drops the override and takes the project's value again. An edit to a project's style flows into every background where that path is linked.
+
+Migration: each of the nine presets becomes a project of the same id whose style is that card's current values, with the card as its one background and `primary`, and no overrides, so nothing changes on screen. A background file with no `project` gets one synthesized the same way, with a warning.
+
+Built in order (BACKLOG.md): the schema; Spread and House pull in the shuffle with New background; Browse grouped by project with a project panel and linked/overridden marks; motion per project and per mass (shader); handoff and ship for several backgrounds per project. New shape kinds (bands, lines, edges, flow fields) come after, as their own job.
+
 ### Photo stage (Joe, 2026-11-03: "drop in photos and process them with the shader toolkit; the result should be something in between the photo and what we have built here")
 
 This supersedes the earlier "character only" image grammar. A photo is now a first-class input and the picture may stay visible. The card is a point on a continuum from the photograph to the abstract field, set by one dial, **fidelity** 0..1:
