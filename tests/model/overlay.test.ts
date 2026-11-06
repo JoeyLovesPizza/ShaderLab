@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { packUniforms } from '../../src/model/pack'
 import { withMassShape } from '../../src/model/types'
-import { migrateOverlay } from '../../src/model/validate'
+import { migrateOverlay, validatePreset } from '../../src/model/validate'
 import { clone, draftOf, loadFamily, loadPresets } from '../helpers'
 
 /*
@@ -113,6 +113,23 @@ describe('overlays from earlier builds', () => {
       }
     })
   }
+
+  it('a v7 preset or overlay without project or overrides loads with a warning, not invalid', () => {
+    for (const preset of presets) {
+      const file = clone(preset) as unknown as Obj
+      delete file.project
+      delete file.overrides
+      const result = validatePreset(file)
+      expect(result.ok, `${preset.id} should still validate`).toBe(true)
+      if (!result.ok) continue
+      expect(result.value.project).toBe(preset.id)
+      expect(result.value.overrides).toEqual([])
+      expect(result.warnings.map((w) => w.path)).toEqual(expect.arrayContaining(['project', 'overrides']))
+      // An overlay is laid over such a file the same way.
+      const migrated = migrateOverlay(file as never, clone(draftOf(preset)))
+      expect(migrated, `${preset.id}: overlay over a v7 file`).not.toBeNull()
+    }
+  })
 
   it('an overlay that cannot be made valid is dropped, not thrown', () => {
     const preset = presets[0]

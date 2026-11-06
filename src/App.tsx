@@ -4,6 +4,7 @@ import { MotionConfig, useReducedMotion } from 'motion/react'
 import 'dialkit/styles.css'
 import { initialState, reduce, type BrowseView } from './states/machine'
 import { stage } from './shader/stage'
+import { getProject, getProjects, relink, setProjectStyle } from './model/projects'
 import { clearDirty, getDirty, getDraft, revertToFile, setDraft, useDirtyPaths, useModified } from './model/cards'
 import { getFamily } from './model/family'
 import {
@@ -54,7 +55,7 @@ function usePanelOpen() {
 // update lands on a fresh module instance, not these.
 if (import.meta.env.DEV) {
   Object.assign(window, {
-    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto },
+    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto, getProject, getProjects, setProjectStyle, relink },
   })
 }
 

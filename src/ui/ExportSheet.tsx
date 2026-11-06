@@ -7,6 +7,7 @@ import { download } from '../export/download'
 import { WEBM_UNSUPPORTED, canExportWebm, exportWebm } from '../export/webm'
 import { API_BASE, whenProbed } from '../export/mode'
 import { validatePreset } from '../model/validate'
+import { getLink } from '../model/cards'
 import { getFamily } from '../model/family'
 import { cardStateFrom, stage } from '../shader/stage'
 
@@ -43,7 +44,7 @@ export function ExportSheet({ handle, preset, onDone }: ExportSheetProps) {
     setBusy(true)
     const lines: string[] = []
     try {
-      const next = presetFromCard(preset, handle.getDraft(), { stillTime, loopSeconds })
+      const next = presetFromCard(preset, handle.getDraft(), { stillTime, loopSeconds }, getLink(preset.id))
       const result = validatePreset(next)
       if (!result.ok) {
         lines.push('Not exported: the preset breaks a rule.')

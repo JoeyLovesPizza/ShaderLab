@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from 'react'
 import { getFamily } from './family'
 import { PRESETS, blankPreset } from './presets'
-import type { CardDraft, Preset } from './types'
-import { migrateOverlay } from './validate'
+import { overridesAfterEdit } from './project'
+import type { CardDraft, LinkPath, Preset } from './types'
+import { diffPaths, stableStringify } from './stable'
+import { cleanOverrides, migrateOverlay } from './validate'
 
 /*
  * Every card's working copy, as one store. The preset files are the source
@@ -16,6 +18,7 @@ import { migrateOverlay } from './validate'
 
 const STORAGE_KEY = 'shaderlab:overlays'
 const DIRTY_KEY = 'shaderlab:dirty'
+const LINKS_KEY = 'shaderlab:links'
 const VERSION_KEY = 'shaderlab:familyVersion'
 
 // When the family's defaults move on (a new `meta.version`), overlays and
@@ -27,6 +30,9 @@ try {
   if (stored < current) {
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(DIRTY_KEY)
+    localStorage.removeItem(LINKS_KEY)
+    // The project store's own overlay (projects.ts).
+    localStorage.removeItem('shaderlab:projects')
     // The library's own cards (library.ts) were written against the old
     // schema too.
     localStorage.removeItem('shaderlab:library')
@@ -52,21 +58,7 @@ export function draftOf(preset: Preset): CardDraft {
   })
 }
 
-/** JSON with keys sorted at every level: a draft built by the panel and
-    one read from a file carry the same values in a different key order. */
-export function stableStringify(value: unknown): string {
-  return JSON.stringify(sortKeys(value))
-}
-
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys)
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {}
-    for (const key of Object.keys(value).sort()) out[key] = sortKeys((value as Record<string, unknown>)[key])
-    return out
-  }
-  return value
-}
+export { diffPaths, stableStringify }
 
 const same = (a: CardDraft, b: CardDraft) => stableStringify(a) === stableStringify(b)
 
@@ -74,6 +66,21 @@ const same = (a: CardDraft, b: CardDraft) => stableStringify(a) === stableString
 const baselines = new Map<string, CardDraft>(PRESETS.map((p) => [p.id, draftOf(p)]))
 const drafts = new Map<string, CardDraft>(PRESETS.map((p) => [p.id, draftOf(p)]))
 const listeners = new Set<() => void>()
+
+/*
+ * Which project each card follows, and the stage paths it has taken for
+ * itself (SPEC.md §4). Held beside the drafts because a draft is only the
+ * editable part of a card. The baseline is the file's; an override added
+ * by hand survives a reload through localStorage like an overlay does.
+ */
+export interface Link {
+  project: string
+  overrides: LinkPath[]
+}
+const linkOfPreset = (p: Preset): Link => ({ project: p.project, overrides: [...p.overrides] })
+const links = new Map<string, Link>(PRESETS.map((p) => [p.id, linkOfPreset(p)]))
+const linkBaselines = new Map<string, Link>(PRESETS.map((p) => [p.id, linkOfPreset(p)]))
+const sameLink = (a: Link | undefined, b: Link | undefined) => !!a && !!b && a.project === b.project && a.overrides.join() === b.overrides.join()
 
 // Only the bones: an overlay from an older build lacks the keys added
 // since (finish, light, strokes), and the migration fills them in.
@@ -109,6 +116,16 @@ try {
   // Storage blocked or garbage: the files it is.
 }
 
+try {
+  const stored = JSON.parse(localStorage.getItem(LINKS_KEY) ?? '{}') as Record<string, unknown>
+  for (const [id, overrides] of Object.entries(stored)) {
+    const link = links.get(id)
+    if (link) links.set(id, { project: link.project, overrides: cleanOverrides(overrides) })
+  }
+} catch {
+  // Storage blocked or garbage: the files' links stand.
+}
+
 /*
  * Dirty fields: leaf paths (`masses.1.hue`, `depth.haze.amount`) Joe set by
  * hand. A mode change or a Shuffle never rolls them; "Shuffle (all
@@ -133,26 +150,15 @@ function persist() {
   }
   const dirtyOut: Record<string, string[]> = {}
   for (const [id, paths] of dirty) if (paths.size) dirtyOut[id] = [...paths]
+  const linksOut: Record<string, LinkPath[]> = {}
+  for (const [id, link] of links) if (!sameLink(link, linkBaselines.get(id))) linksOut[id] = link.overrides
   try {
+    localStorage.setItem(LINKS_KEY, JSON.stringify(linksOut))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(overlays))
     localStorage.setItem(DIRTY_KEY, JSON.stringify(dirtyOut))
   } catch {
     // Storage blocked: edits live for the session only.
   }
-}
-
-/** Leaf paths where two values differ, dot-separated, arrays by index. */
-export function diffPaths(a: unknown, b: unknown, prefix = ''): string[] {
-  if (a === b) return []
-  const isObjLike = (v: unknown) => typeof v === 'object' && v !== null
-  if (!isObjLike(a) || !isObjLike(b)) return [prefix]
-  const keys = new Set([...Object.keys(a as object), ...Object.keys(b as object)])
-  const out: string[] = []
-  for (const key of keys) {
-    const path = prefix ? `${prefix}.${key}` : key
-    out.push(...diffPaths((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key], path))
-  }
-  return out
 }
 
 export function getDirty(id: string): ReadonlySet<string> {
@@ -201,6 +207,8 @@ export const hasCard = (id: string) => drafts.has(id)
 export function ensureCard(preset: Preset) {
   if (baselines.has(preset.id)) return
   baselines.set(preset.id, draftOf(preset))
+  if (!links.has(preset.id)) links.set(preset.id, linkOfPreset(preset))
+  if (!linkBaselines.has(preset.id)) linkBaselines.set(preset.id, linkOfPreset(preset))
   if (!drafts.has(preset.id)) drafts.set(preset.id, draftOf(preset))
   notify()
 }
@@ -210,9 +218,15 @@ export function moveCard(from: string, to: string, preset: Preset) {
   const draft = drafts.get(from)
   const base = baselines.get(from)
   const marks = dirty.get(from)
+  const link = links.get(from)
+  const linkBase = linkBaselines.get(from)
   drafts.delete(from)
   baselines.delete(from)
   dirty.delete(from)
+  links.delete(from)
+  linkBaselines.delete(from)
+  links.set(to, link ?? linkOfPreset(preset))
+  linkBaselines.set(to, linkBase ?? linkOfPreset(preset))
   drafts.set(to, draft ?? draftOf(preset))
   baselines.set(to, base ?? draftOf(preset))
   if (marks) dirty.set(to, marks)
@@ -226,8 +240,13 @@ export function reloadFile(preset: Preset) {
   const base = draftOf(preset)
   const old = baselines.get(preset.id)
   const draft = drafts.get(preset.id)
+  const oldLink = links.get(preset.id)
+  const unedited = !old || !draft || same(draft, old)
   baselines.set(preset.id, base)
-  if (!old || !draft || same(draft, old)) drafts.set(preset.id, draftOf(preset))
+  if (unedited) drafts.set(preset.id, draftOf(preset))
+  // Its overrides follow the file only while the card has none of its own.
+  if (unedited || sameLink(oldLink, linkBaselines.get(preset.id))) links.set(preset.id, linkOfPreset(preset))
+  linkBaselines.set(preset.id, linkOfPreset(preset))
   persist()
   notify()
 }
@@ -236,14 +255,45 @@ export function dropCard(id: string) {
   drafts.delete(id)
   baselines.delete(id)
   dirty.delete(id)
+  links.delete(id)
+  linkBaselines.delete(id)
   persist()
   notify()
 }
 
+/**
+ * An edit by hand or by a roll. Any linked stage it changes becomes an
+ * override of this card, so the project stops moving it there (SPEC.md §4).
+ */
 export function setDraft(id: string, draft: CardDraft) {
+  const prev = drafts.get(id)
+  const link = links.get(id)
+  if (prev && link) {
+    const overrides = overridesAfterEdit(prev, draft, link.overrides)
+    if (overrides.join() !== link.overrides.join()) links.set(id, { ...link, overrides })
+  }
   drafts.set(id, draft)
   persist()
   notify()
+}
+
+/** A draft that follows from the project, not from an edit: no override is marked. */
+export function replaceDraft(id: string, draft: CardDraft, overrides?: LinkPath[]) {
+  const link = links.get(id)
+  if (overrides && link) links.set(id, { ...link, overrides })
+  drafts.set(id, draft)
+  persist()
+  notify()
+}
+
+/** The card's project and overrides now (the baseline's, until an edit). */
+export function getLink(id: string): Link {
+  return links.get(id) ?? { project: id, overrides: [] }
+}
+
+/** The cards that follow a project. */
+export function cardsInProject(projectId: string): string[] {
+  return [...links].filter(([, link]) => link.project === projectId).map(([id]) => id)
 }
 
 /** True when the card's draft differs from its file. */
@@ -258,6 +308,8 @@ export function revertToFile(id: string) {
   const base = baselines.get(id)
   if (!base) return
   drafts.set(id, structuredClone(base))
+  const linkBase = linkBaselines.get(id)
+  if (linkBase) links.set(id, { project: linkBase.project, overrides: [...linkBase.overrides] })
   dirty.delete(id)
   persist()
   notify()
@@ -267,6 +319,8 @@ export function revertToFile(id: string) {
 export function markSaved(id: string, draft: CardDraft) {
   baselines.set(id, structuredClone(draft))
   drafts.set(id, structuredClone(draft))
+  const link = links.get(id)
+  if (link) linkBaselines.set(id, { project: link.project, overrides: [...link.overrides] })
   persist()
   notify()
 }

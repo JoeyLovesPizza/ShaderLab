@@ -2,16 +2,20 @@ import {
   COLOUR_MODES,
   COVERAGE_MODES,
   DEPTH_ORDER,
+  DEFAULT_SPREAD,
   L_MAX,
   L_MIN,
+  LINK_PATHS,
   MASS_KINDS,
   MAX_MASSES,
   STRUCTURE_LAYERS,
   STRUCTURE_MODES,
   type CardDraft,
   type Family,
+  type LinkPath,
   type Mass,
   type Preset,
+  type Project,
   type Range,
 } from './types'
 
@@ -102,6 +106,12 @@ const LAYER_DEFAULT: Record<string, Obj> = {
  */
 function withDefaults(input: Obj, warnings: Issues): Obj {
   const out: Obj = { ...input }
+  // Projects arrived 2026-11-06: a background with none is its own project.
+  if (out.project === undefined && typeof out.id === 'string' && out.id) {
+    warnings.add('project', `missing; read as its own project "${out.id}"`)
+    out.project = out.id
+  }
+  out.overrides = cleanOverrides(out.overrides, warnings)
   if (isObj(out.modes)) {
     const m = out.modes
     if (typeof m.structure === 'string' && !STRUCTURE_MODES.includes(m.structure as never)) {
@@ -152,6 +162,27 @@ function withDefaults(input: Obj, warnings: Issues): Obj {
     layerBlur: { ...FINISH_DEFAULT.layerBlur, ...(isObj(f.layerBlur) ? f.layerBlur : {}) },
   }
   return out
+}
+
+/** An overrides list as the schema wants it: only known LinkPaths, once
+    each, in LINK_PATHS order. A missing list is empty; an unknown path is
+    dropped with a warning, so an old name never makes a file invalid. */
+export function cleanOverrides(value: unknown, warnings?: Issues): LinkPath[] {
+  if (value === undefined) {
+    warnings?.add('overrides', 'missing; read as none (every stage follows the project)')
+    return []
+  }
+  if (!Array.isArray(value)) {
+    warnings?.add('overrides', 'must be a list of stage paths; read as none')
+    return []
+  }
+  const known = new Set<string>(LINK_PATHS)
+  const keep = new Set<string>()
+  for (const p of value) {
+    if (typeof p === 'string' && known.has(p)) keep.add(p)
+    else warnings?.add('overrides', `"${String(p)}" is not a linkable stage; dropped`)
+  }
+  return LINK_PATHS.filter((p) => keep.has(p))
 }
 
 function checkFinish(issues: Issues, value: unknown) {
@@ -270,6 +301,8 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
       issues.add('loop.stillTime', 'must be within the loop')
     }
   }
+
+  if (typeof input.project !== 'string' || !input.project) issues.add('project', 'must be a non-empty string (the project id)')
 
   issues.num(input, 'seed', '', 0)
 
@@ -410,6 +443,68 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
   return { ok: true, value: input as unknown as Preset, issues: [], warnings: warnings.list }
 }
 
+/** What a project's stages are checked against: the preset rules, with
+    fixed, valid values for everything a project does not carry. */
+const PROJECT_SCAFFOLD = {
+  schema: 2,
+  id: 'project',
+  project: 'project',
+  overrides: [],
+  shader: 'masses@1',
+  canvas: { width: 613, height: 408, dpr: 2 },
+  loop: { seconds: 12, fps: 30, stillTime: 6 },
+  seed: 0,
+  captionMask: false,
+  image: null,
+  photo: null,
+  meta: { name: 'project', created: '2026-01-01' },
+}
+
+const SLUG = /^[a-z0-9][a-z0-9-]*$/
+
+/** Checks an unknown JSON value as a project file (SPEC.md §4). Never
+    throws. The style is held to the same rules as a card's stages, by
+    running them through validatePreset on a scaffold. */
+export function validateProject(raw: unknown): ValidationResult<Project> {
+  const issues = new Issues()
+  const warnings: ValidationIssue[] = []
+  if (!isObj(raw)) {
+    return { ok: false, issues: [{ path: '', message: 'project must be an object' }], warnings: [] }
+  }
+  if (raw.schema !== 2) issues.add('schema', 'must be 2')
+  if (typeof raw.id !== 'string' || !SLUG.test(raw.id)) issues.add('id', 'must be a slug')
+  if (typeof raw.name !== 'string') issues.add('name', 'must be a string')
+  let spread = raw.spread
+  if (spread === undefined) {
+    warnings.push({ path: 'spread', message: `missing; read as ${DEFAULT_SPREAD}` })
+    spread = DEFAULT_SPREAD
+  }
+  issues.num({ spread }, 'spread', '', 0, 1)
+  if (typeof raw.primary !== 'string' || !raw.primary) issues.add('primary', 'must be the id of a background')
+  if (!isObj(raw.meta) || typeof raw.meta.created !== 'string') issues.add('meta', 'must be { created }')
+
+  let style: unknown
+  if (!isObj(raw.style)) issues.add('style', 'must be { base, masses, texture, modes, depth }')
+  else {
+    const { base, masses, texture, modes, depth } = raw.style
+    const result = validatePreset({ ...PROJECT_SCAFFOLD, base, masses, texture, modes, depth })
+    for (const w of result.warnings) warnings.push({ path: `style.${w.path}`, message: w.message })
+    if (!result.ok) for (const i of result.issues) issues.add(`style.${i.path}`, i.message)
+    else {
+      const v = result.value
+      style = { base: v.base, masses: v.masses, texture: v.texture, modes: v.modes, depth: v.depth }
+    }
+  }
+
+  if (issues.list.length) return { ok: false, issues: issues.list, warnings }
+  return {
+    ok: true,
+    value: { schema: 2, id: raw.id as string, name: raw.name as string, spread: spread as number, primary: raw.primary as string, style, meta: { created: (raw.meta as Obj).created as string } } as Project,
+    issues: [],
+    warnings,
+  }
+}
+
 export function validateFamily(raw: unknown): ValidationResult<Family> {
   const issues = new Issues()
   if (!isObj(raw)) {
@@ -422,6 +517,9 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
     issues.add('shader', 'must be a versioned id like masses@1')
   }
   issues.num(input, 'variety', '', 0, 1)
+  // The house pull arrived with projects (2026-11-06).
+  if (input.housePull === undefined) input.housePull = 0.5
+  issues.num(input, 'housePull', '', 0, 1)
   if (!isObj(input.base)) issues.add('base', 'must be { value: [min, max], chromaMax }')
   else {
     issues.range(input.base, 'value', 'base', L_MIN, L_MAX)

@@ -1,0 +1,211 @@
+{
+  "id": "daisies",
+  "meta": {
+    "created": "2026-11-04"
+  },
+  "name": "Daisies",
+  "primary": "daisies",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.0565,
+      "hue": 255.6,
+      "locked": false,
+      "value": 0.7341
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.2657,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.331,
+        "on": true
+      },
+      "light": {
+        "height": 1.5236,
+        "on": false
+      },
+      "parallax": {
+        "amount": 0.6277,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2629,
+        "frequency": 85,
+        "on": true,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0,
+        "on": false,
+        "rect": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "spread": 0
+      },
+      "strokes": {
+        "amount": 0.0247,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.294,
+        "on": false,
+        "scale": 0.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.0149,
+        "distance": 0.4,
+        "hue": 28.7,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.85,
+            "y": 0.59
+          },
+          "control2": {
+            "x": 0.85,
+            "y": 0.59
+          },
+          "end": {
+            "x": 1.25,
+            "y": 0.79
+          },
+          "start": {
+            "x": 0.45,
+            "y": 0.39
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.0149,
+            "hue": 28.7,
+            "value": 0.9
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.0149,
+            "hue": 28.7,
+            "value": 0.9
+          }
+        },
+        "size": 0.23,
+        "softness": 0.7,
+        "value": 0.9,
+        "x": 0.85,
+        "y": 0.59
+      },
+      {
+        "chroma": 0.1206,
+        "distance": 0.7,
+        "hue": 77.9,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.93,
+            "y": 0.25
+          },
+          "control2": {
+            "x": 0.93,
+            "y": 0.25
+          },
+          "end": {
+            "x": 1.33,
+            "y": 0.45
+          },
+          "start": {
+            "x": 0.53,
+            "y": 0.05
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.1206,
+            "hue": 77.9,
+            "value": 0.8105
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.1206,
+            "hue": 77.9,
+            "value": 0.8105
+          }
+        },
+        "size": 0.2,
+        "softness": 0.7,
+        "value": 0.8105,
+        "x": 0.93,
+        "y": 0.25
+      },
+      {
+        "chroma": 0.04,
+        "distance": 0.7,
+        "hue": 267.5,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.58,
+            "y": 0.45
+          },
+          "control2": {
+            "x": 0.58,
+            "y": 0.45
+          },
+          "end": {
+            "x": 0.98,
+            "y": 0.65
+          },
+          "start": {
+            "x": 0.18,
+            "y": 0.25
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.04,
+            "hue": 267.5,
+            "value": 0.8021
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.04,
+            "hue": 267.5,
+            "value": 0.8021
+          }
+        },
+        "size": 0.2,
+        "softness": 0.7,
+        "value": 0.8021,
+        "x": 0.58,
+        "y": 0.45
+      }
+    ],
+    "modes": {
+      "bold": true,
+      "colour": "warm-cool",
+      "coverage": "block",
+      "structure": "relief"
+    },
+    "texture": {
+      "grain": 0.0628
+    }
+  }
+}

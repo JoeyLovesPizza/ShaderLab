@@ -1,0 +1,168 @@
+{
+  "id": "dropbox-meetings",
+  "meta": {
+    "created": "2026-10-28"
+  },
+  "name": "Dropbox meetings",
+  "primary": "dropbox-meetings",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.02,
+      "hue": 20,
+      "locked": false,
+      "value": 0.86
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.3,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.25,
+        "on": true
+      },
+      "light": {
+        "height": 1.5,
+        "on": true
+      },
+      "parallax": {
+        "amount": 0.6,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2,
+        "frequency": 85,
+        "on": false,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0.03,
+        "on": false,
+        "rect": [
+          0.08,
+          0.1,
+          0.84,
+          0.8
+        ],
+        "spread": 0.1
+      },
+      "strokes": {
+        "amount": 0.018,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.3,
+        "on": false,
+        "scale": 0.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.17,
+        "distance": 0.5,
+        "hue": 15,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.5,
+            "y": 1.05
+          },
+          "control2": {
+            "x": 0.5,
+            "y": 1.05
+          },
+          "end": {
+            "x": 0.9,
+            "y": 1.25
+          },
+          "start": {
+            "x": 0.1,
+            "y": 0.85
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.17,
+            "hue": 15,
+            "value": 0.5
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.17,
+            "hue": 15,
+            "value": 0.5
+          }
+        },
+        "size": 0.6,
+        "softness": 0.8,
+        "value": 0.5,
+        "x": 0.5,
+        "y": 1.05
+      },
+      {
+        "chroma": 0.07,
+        "distance": 0.8,
+        "hue": 260,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 1.4,
+            "y": 0.15
+          },
+          "control2": {
+            "x": 1.4,
+            "y": 0.15
+          },
+          "end": {
+            "x": 1.8,
+            "y": 0.35
+          },
+          "start": {
+            "x": 1,
+            "y": -0.05
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.07,
+            "hue": 260,
+            "value": 0.28
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.07,
+            "hue": 260,
+            "value": 0.28
+          }
+        },
+        "size": 0.3,
+        "softness": 0.9,
+        "value": 0.28,
+        "x": 1.4,
+        "y": 0.15
+      }
+    ],
+    "modes": {
+      "bold": true,
+      "colour": "warm-cool",
+      "coverage": "blend",
+      "structure": "none"
+    },
+    "texture": {
+      "grain": 0.06
+    }
+  }
+}

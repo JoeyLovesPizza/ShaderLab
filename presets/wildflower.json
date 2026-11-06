@@ -213,7 +213,9 @@
     "coverage": "blend",
     "structure": "none"
   },
+  "overrides": [],
   "photo": null,
+  "project": "wildflower",
   "schema": 2,
   "seed": 7,
   "shader": "masses@1",

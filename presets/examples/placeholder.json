@@ -169,7 +169,9 @@
     "coverage": "blend",
     "structure": "none"
   },
+  "overrides": [],
   "photo": null,
+  "project": "placeholder",
   "schema": 2,
   "seed": 3,
   "shader": "masses@1",

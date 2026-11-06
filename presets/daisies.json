@@ -226,10 +226,12 @@
     "coverage": "block",
     "structure": "relief"
   },
+  "overrides": [],
   "photo": {
     "fidelity": 0.5,
     "src": "photos/daisies.webp"
   },
+  "project": "daisies",
   "schema": 2,
   "seed": 362871,
   "shader": "masses@1",

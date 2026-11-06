@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react'
-import { dropCard, ensureCard, getDraft, moveCard, reloadFile, setDraft } from './cards'
+import { dropCard, ensureCard, getDraft, getLink, moveCard, reloadFile, setDraft } from './cards'
 import { getFamily } from './family'
 import { PRESETS, blankPreset, onPresetFiles } from './presets'
+import { registerBackground, renamePrimary } from './projects'
 import { newSeed, rollScoped } from './shuffle'
 import { blobMass, type Preset } from './types'
 import { validatePreset } from './validate'
@@ -153,7 +154,7 @@ export function newCard(): Preset {
   template.depth.light = { on: family.depth.light.on, height: (family.depth.light.amount[0] + family.depth.light.amount[1]) / 2 }
   // The roll gives it a face; the rolled values become its baseline.
   const rolled = rollScoped(template, { ...template }, family, seed, 'all')
-  const preset: Preset = { ...template, ...rolled }
+  const preset: Preset = registerBackground({ ...template, ...rolled })
   entries.push({ preset, source: null })
   ensureCard(preset)
   refresh()
@@ -167,7 +168,17 @@ export function duplicateCard(id: string): Preset | undefined {
   const name = `${original.meta.name} copy`
   const newId = slugify(name)
   const draft = structuredClone(getDraft(id))
-  const preset: Preset = { ...structuredClone(original), ...draft, id: newId, seed: newSeed(), meta: { ...original.meta, name, project: undefined } }
+  // A copy stays in the original's project, with the original's overrides.
+  const link = getLink(id)
+  const preset: Preset = {
+    ...structuredClone(original),
+    ...draft,
+    id: newId,
+    project: link.project,
+    overrides: [...link.overrides],
+    seed: newSeed(),
+    meta: { ...original.meta, name, project: undefined },
+  }
   entries.splice(at + 1, 0, { preset, source: null })
   ensureCard(preset)
   refresh()
@@ -186,7 +197,10 @@ export function renameCard(id: string, name: string): Preset | undefined {
   // left by the time the card store notifies.
   entries[at] = { preset, source: entry.source }
   snapshot = entries.map((e) => e.preset)
-  if (newId !== id) moveCard(id, newId, preset)
+  if (newId !== id) {
+    moveCard(id, newId, preset)
+    renamePrimary(getLink(newId).project, id, newId)
+  }
   refresh()
   return preset
 }
@@ -204,7 +218,7 @@ export function removeCard(id: string) {
 export function markCardSaved(id: string) {
   const entry = entries.find((e) => e.preset.id === id)
   if (!entry) return
-  entry.preset = { ...entry.preset, ...getDraft(id) }
+  entry.preset = { ...entry.preset, ...getDraft(id), ...getLink(id) }
   if (entry.source) removed.delete(entry.source)
   entry.source = id
   removed.delete(id)

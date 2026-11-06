@@ -243,6 +243,11 @@ export interface PresetMeta {
 export interface Preset {
   schema: 2
   id: string
+  /** The project this background belongs to (presets/projects/<id>.json). */
+  project: string
+  /** The stage paths this background has taken for itself; every other
+      LinkPath follows the project's style. */
+  overrides: LinkPath[]
   shader: `${string}@${number}`
   canvas: PresetCanvas
   loop: PresetLoop
@@ -269,6 +274,37 @@ export type CardDraft = Pick<
   'seed' | 'modes' | 'base' | 'masses' | 'texture' | 'depth' | 'finish' | 'captionMask' | 'loop' | 'photo'
 >
 
+/**
+ * Projects (SPEC.md §4, "Projects and backgrounds"): the stages a project
+ * styles for its backgrounds, with the shapes a card has. Link granularity
+ * is a whole stage: base, masses, texture, modes, and each depth layer.
+ */
+export type DepthLinkPath = `depth.${DepthLayerName}`
+export type LinkPath = 'base' | 'masses' | 'texture' | 'modes' | DepthLinkPath
+export const LINK_PATHS: LinkPath[] = ['base', 'masses', 'texture', 'modes', ...DEPTH_ORDER.map((name): DepthLinkPath => `depth.${name}`)]
+
+export interface ProjectStyle {
+  base: BaseColor
+  masses: Mass[]
+  texture: { grain: number }
+  modes: Modes
+  depth: Depth
+}
+
+export interface Project {
+  schema: 2
+  id: string
+  name: string
+  /** How far a new background or a shuffle may stray from the style, 0..1. */
+  spread: number
+  /** The background that ships. */
+  primary: string
+  style: ProjectStyle
+  meta: { created: string }
+}
+
+export const DEFAULT_SPREAD = 0.4
+
 export type Range = [number, number]
 
 export interface FamilyLayer {
@@ -286,6 +322,9 @@ export interface FamilyLayer {
 export interface Family {
   schema: 2
   shader: Preset['shader']
+  /** How strongly projects are drawn toward the house, 0..1; at 0 they
+      are independent. */
+  housePull: number
   /** How far the shuffle ranges from the family defaults, 0..1. */
   variety: number
   base: { value: Range; chromaMax: number }

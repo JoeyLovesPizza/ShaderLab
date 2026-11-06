@@ -1,15 +1,24 @@
-import { withMassShape, type CardDraft, type Preset } from '../model/types'
+import { withMassShape, type CardDraft, type LinkPath, type Preset, type Project } from '../model/types'
 
 /**
  * The preset as the card now is: the draft (seed, modes, base, masses,
  * texture, depth, caption switch, loop) over the file it started from.
  * Numbers are rounded so a nudge of a dial is one clean line in a diff.
+ * `link` is the card's project and overrides as the store holds them now
+ * (cards.ts getLink); without it the preset's own stand.
  */
-export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTime: number; loopSeconds: number }): Preset {
+export function presetFromCard(
+  preset: Preset,
+  draft: CardDraft,
+  loop: { stillTime: number; loopSeconds: number },
+  link?: { project: string; overrides: LinkPath[] },
+): Preset {
   const r = (n: number, places = 4) => Number(n.toFixed(places))
   const d = draft.depth
   return {
     ...preset,
+    project: link?.project ?? preset.project,
+    overrides: [...(link?.overrides ?? preset.overrides)],
     seed: draft.seed,
     modes: { ...draft.modes },
     base: { ...draft.base, hue: r(draft.base.hue, 1), value: r(draft.base.value), chroma: r(draft.base.chroma) },
@@ -65,6 +74,11 @@ export function presetFromCard(preset: Preset, draft: CardDraft, loop: { stillTi
 /** Pretty-printed with keys sorted at every level, so diffs are one line per value. */
 export function serializePreset(preset: Preset): string {
   return `${JSON.stringify(sortKeys(preset), null, 2)}\n`
+}
+
+/** A project file, in the same format as a preset. */
+export function serializeProject(project: Project): string {
+  return `${JSON.stringify(sortKeys(project), null, 2)}\n`
 }
 
 function sortKeys(value: unknown): unknown {

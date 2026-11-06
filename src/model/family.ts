@@ -15,6 +15,7 @@ export const DEFAULT_FAMILY: Family = {
   schema: 2,
   shader: 'masses@1',
   variety: 0.6,
+  housePull: 0.5,
   base: { value: [0.25, 0.88], chromaMax: 0.08 },
   masses: {
     count: [2, 3],
@@ -44,7 +45,7 @@ export const DEFAULT_FAMILY: Family = {
     strokes: { on: false, allowed: true, amount: [0.01, 0.03], size: 0.35, density: 14 },
     shadow: { on: false, allowed: false, amount: [0.3, 0.7] },
   },
-  meta: { name: 'built-in fallback', created: '2026-10-28', version: 7 },
+  meta: { name: 'built-in fallback', created: '2026-10-28', version: 8 },
 }
 
 /** The load error, when family.json failed and the fallback is in use. */

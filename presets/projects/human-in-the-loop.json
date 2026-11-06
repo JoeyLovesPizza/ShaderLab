@@ -1,0 +1,168 @@
+{
+  "id": "human-in-the-loop",
+  "meta": {
+    "created": "2026-10-28"
+  },
+  "name": "Human In the Loop",
+  "primary": "human-in-the-loop",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.03,
+      "hue": 60,
+      "locked": false,
+      "value": 0.26
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.3,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.25,
+        "on": true
+      },
+      "light": {
+        "height": 1.5,
+        "on": true
+      },
+      "parallax": {
+        "amount": 0.6,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2,
+        "frequency": 85,
+        "on": false,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0.03,
+        "on": false,
+        "rect": [
+          0.08,
+          0.1,
+          0.84,
+          0.8
+        ],
+        "spread": 0.1
+      },
+      "strokes": {
+        "amount": 0.018,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.3,
+        "on": false,
+        "scale": 0.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.09,
+        "distance": 0.5,
+        "hue": 78,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 1.2,
+            "y": 0.95
+          },
+          "control2": {
+            "x": 1.2,
+            "y": 0.95
+          },
+          "end": {
+            "x": 1.6,
+            "y": 1.15
+          },
+          "start": {
+            "x": 0.8,
+            "y": 0.75
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.09,
+            "hue": 78,
+            "value": 0.76
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.09,
+            "hue": 78,
+            "value": 0.76
+          }
+        },
+        "size": 0.6,
+        "softness": 0.75,
+        "value": 0.76,
+        "x": 1.2,
+        "y": 0.95
+      },
+      {
+        "chroma": 0.09,
+        "distance": 0.8,
+        "hue": 50,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.3,
+            "y": 0.8
+          },
+          "control2": {
+            "x": 0.3,
+            "y": 0.8
+          },
+          "end": {
+            "x": 0.7,
+            "y": 1
+          },
+          "start": {
+            "x": -0.1,
+            "y": 0.6
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.09,
+            "hue": 50,
+            "value": 0.38
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.09,
+            "hue": 50,
+            "value": 0.38
+          }
+        },
+        "size": 0.299510603588907,
+        "softness": 0.9,
+        "value": 0.38,
+        "x": 0.3,
+        "y": 0.8
+      }
+    ],
+    "modes": {
+      "bold": false,
+      "colour": "mono",
+      "coverage": "blend",
+      "structure": "none"
+    },
+    "texture": {
+      "grain": 0.06
+    }
+  }
+}

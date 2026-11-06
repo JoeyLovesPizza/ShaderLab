@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import type { CardDraft, Family, Preset } from '../src/model/types'
-import { validateFamily, validatePreset } from '../src/model/validate'
+import type { CardDraft, Family, Preset, Project } from '../src/model/types'
+import { validateFamily, validatePreset, validateProject } from '../src/model/validate'
 
 export const ROOT = resolve(import.meta.dirname, '..')
 
@@ -67,3 +67,16 @@ export function diffPaths(a: unknown, b: unknown, prefix = ''): string[] {
 }
 
 export const clone = <T>(v: T): T => structuredClone(v)
+
+/** The project files, validated. */
+export function loadProjects(): Project[] {
+  const dir = resolve(ROOT, 'presets/projects')
+  return readdirSync(dir)
+    .filter((n) => n.endsWith('.json'))
+    .sort()
+    .map((name) => {
+      const result = validateProject(JSON.parse(readFileSync(resolve(dir, name), 'utf8')))
+      if (!result.ok) throw new Error(`${name}: ${JSON.stringify(result.issues)}`)
+      return result.value
+    })
+}

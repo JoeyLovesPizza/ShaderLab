@@ -88,7 +88,7 @@
           "y": 0.5
         },
         "end": {
-          "x": 1.0,
+          "x": 1,
           "y": 0.7
         },
         "start": {
@@ -170,7 +170,9 @@
     "coverage": "blend",
     "structure": "relief"
   },
+  "overrides": [],
   "photo": null,
+  "project": "showreel",
   "schema": 2,
   "seed": 43,
   "shader": "masses@1",

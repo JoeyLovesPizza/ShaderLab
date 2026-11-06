@@ -1,0 +1,125 @@
+{
+  "id": "silk-fold",
+  "meta": {
+    "created": "2026-11-02"
+  },
+  "name": "Silk fold",
+  "primary": "silk-fold",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.1,
+      "hue": 70,
+      "locked": false,
+      "value": 0.85
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.2,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.15,
+        "on": false
+      },
+      "light": {
+        "height": 1.8,
+        "on": true
+      },
+      "parallax": {
+        "amount": 0.5,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2,
+        "frequency": 85,
+        "on": false,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0.03,
+        "on": false,
+        "rect": [
+          0.08,
+          0.1,
+          0.84,
+          0.8
+        ],
+        "spread": 0.1
+      },
+      "strokes": {
+        "amount": 0.018,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.6,
+        "on": false,
+        "scale": 1.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.2,
+        "distance": 0.4,
+        "hue": 30,
+        "kind": "ridge",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.45,
+            "y": 0.05
+          },
+          "control2": {
+            "x": 0.7,
+            "y": 0.65
+          },
+          "end": {
+            "x": 1.5,
+            "y": 0.7
+          },
+          "start": {
+            "x": 0.05,
+            "y": 0.05
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.1,
+            "hue": 75,
+            "value": 0.88
+          },
+          "fieldMix": 0.6,
+          "start": {
+            "chroma": 0.12,
+            "hue": 285,
+            "value": 0.35
+          }
+        },
+        "size": 0.16,
+        "softness": 0.5,
+        "value": 0.6,
+        "x": 0.75,
+        "y": 0.4
+      }
+    ],
+    "modes": {
+      "bold": true,
+      "colour": "free",
+      "coverage": "block",
+      "structure": "none"
+    },
+    "texture": {
+      "grain": 0.08
+    }
+  }
+}

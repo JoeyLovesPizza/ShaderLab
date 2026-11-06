@@ -20,8 +20,8 @@ Open:
 
 ## Next: projects and backgrounds (SPEC.md §4, "Projects and backgrounds")
 Joe, 2026-11-06: the cards all feel alike, and he wants to set how alike, per project, with many backgrounds per project. Five jobs, in order, one fresh Builder each:
-1. **Schema** (in flight): project files, `project` and `overrides` on backgrounds, inheritance, `housePull` and `spread` fields, migration of the nine cards, family version 8.
-2. **Spread and House pull** in the shuffle, and New background inside a project.
+1. ~~**Schema**~~ landed 2026-11-06: `presets/projects/<id>.json` for the nine cards, `project` and `overrides` on each background, `src/model/project.ts` (resolve, relink, style edits flow to linked backgrounds), `housePull` and `spread` fields, family version 8. All nine cards are pixel-identical to before. No UI yet: in dev, `__shaderlab.getProject`, `setProjectStyle` and `relink`. Overrides are kept in the card store (localStorage `shaderlab:links`); a shuffle that changes a linked stage marks it overridden.
+2. **Spread and House pull** (next) in the shuffle, and New background inside a project.
 3. **Browse grouped by project**, a project panel, linked/overridden marks and Relink.
 4. **Motion per project and per mass**: loop length, speed, travel; per-mass path shape, scale pulse, colour shift. Shader work, bigger model.
 5. **Handoff and ship** for several backgrounds per project; `primary` ships, the rest are alternates.
@@ -54,4 +54,6 @@ Then: new shape kinds (bands, lines, edges, flow fields).
 | 2026-10-28 | Repo, spec, the masses model, colour pickers, shuffle with colour, coverage and structure modes, grid, rail, focus, PNG export, six project presets |
 | 2026-10-29 | WebP ship, agent handoff, visible motion with one Motion dial, Grid layer cut, hand-edited values protected from shuffles |
 | 2026-11-02 | QA stability pass, `npm run check`, preset library, hosted site on GitHub Pages, Light (lit height field), Strokes, ridge masses, the panel on the hosted build, animated strokes |
+| 2026-11-04 | Photo masses picked by contrast and sized by compactness (daisies no longer wash out) |
+| 2026-11-06 | Projects and backgrounds, job 1: schema, inheritance, migration |
 | 2026-11-03 | Cubic ridge with field mix (silk fold), WebM export with MP4 on ship, browser overlays migrated like files, Strokes as brush marks with chaos and follow |

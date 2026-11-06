@@ -27,6 +27,7 @@ const SLUG = /^[a-z0-9][a-z0-9-]*$/
 
 function presetWriter(): Plugin {
   const presets = '/__shaderlab/presets/'
+  const projects = '/__shaderlab/projects/'
   const photos = '/__shaderlab/photos/'
   const exports = '/__shaderlab/export/'
   return {
@@ -84,7 +85,7 @@ function presetWriter(): Plugin {
             return fail(404, err instanceof Error ? err.message : String(err))
           }
         }
-        if (req.method !== 'POST' || !(url.startsWith(presets) || url.startsWith(exports))) return next()
+        if (req.method !== 'POST' || !(url.startsWith(presets) || url.startsWith(projects) || url.startsWith(exports))) return next()
         const chunks: Buffer[] = []
         for await (const chunk of req) chunks.push(Buffer.from(chunk))
         const body = Buffer.concat(chunks)
@@ -97,6 +98,16 @@ function presetWriter(): Plugin {
             if (json.id !== id) return fail(400, 'preset id in the body does not match the URL')
             await writeFile(resolve(root, 'presets', `${id}.json`), `${JSON.stringify(sortKeys(json), null, 2)}\n`)
             return ok(`presets/${id}.json`)
+          }
+          if (url.startsWith(projects)) {
+            // Save to file also writes the card's project: presets/projects/<id>.json.
+            const id = decode(url.slice(projects.length))
+            if (!SLUG.test(id)) return fail(400, 'project id must be a slug')
+            const json = JSON.parse(body.toString('utf8')) as Record<string, unknown>
+            if (json.id !== id) return fail(400, 'project id in the body does not match the URL')
+            await mkdir(resolve(root, 'presets', 'projects'), { recursive: true })
+            await writeFile(resolve(root, 'presets', 'projects', `${id}.json`), `${JSON.stringify(sortKeys(json), null, 2)}\n`)
+            return ok(`presets/projects/${id}.json`)
           }
           // Export all: out/card-<id>.png from a PNG body, out/<id>.json from
           // JSON, and the handoff manifest regenerated from the library.

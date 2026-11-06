@@ -140,7 +140,9 @@
     "coverage": "block",
     "structure": "none"
   },
+  "overrides": [],
   "photo": null,
+  "project": "silk-fold",
   "schema": 2,
   "seed": 1102,
   "shader": "masses@1",

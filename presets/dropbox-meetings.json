@@ -135,7 +135,7 @@
           "y": 0.35
         },
         "start": {
-          "x": 1.0,
+          "x": 1,
           "y": -0.05
         }
       },
@@ -170,7 +170,9 @@
     "coverage": "blend",
     "structure": "none"
   },
+  "overrides": [],
   "photo": null,
+  "project": "dropbox-meetings",
   "schema": 2,
   "seed": 27,
   "shader": "masses@1",

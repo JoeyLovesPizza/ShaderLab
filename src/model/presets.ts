@@ -1,4 +1,7 @@
-import { blobMass, type Preset } from './types'
+import { PROJECT_FILES } from './projectFiles'
+export { PROJECT_FILES }
+import { projectFromPreset, resolveBackground } from './project'
+import { blobMass, type Preset, type Project } from './types'
 import { describe, validatePreset } from './validate'
 
 /*
@@ -27,6 +30,8 @@ export function blankPreset(id: string, name: string): Preset {
   return {
     schema: 2,
     id,
+    project: id,
+    overrides: [],
     shader: 'masses@1',
     canvas: { width: 613, height: 408, dpr: 2 },
     loop: { seconds: 12, fps: 30, stillTime: 6 },
@@ -72,7 +77,7 @@ function fallbackFor(path: string, json: unknown): Preset {
   return preset
 }
 
-type HotData = { errors?: Map<string, string>; listeners?: Set<(presets: Preset[]) => void> }
+type HotData = { errors?: Map<string, string>; listeners?: Set<(presets: Preset[], projects: Project[]) => void> }
 const hotData: HotData = import.meta.hot ? (import.meta.hot.data as HotData) : {}
 
 /** Load errors by preset id; empty when every file validated. */
@@ -105,8 +110,37 @@ function loadAll(): Preset[] {
     })
 }
 
+/**
+ * Each background resolved against its project, so what the app holds is
+ * what renders. A background whose project file is missing (or broken)
+ * gets one synthesized from itself, with a warning: nothing changes on
+ * screen, and the next save writes the file.
+ */
+function resolveAll(presets: Preset[]): { presets: Preset[]; projects: Project[] } {
+  const projects = new Map(PROJECT_FILES.map((p) => [p.id, p]))
+  const synthesized: Project[] = []
+  const resolved = presets.map((preset) => {
+    // A broken file is a flat card carrying its error: leave it alone.
+    if (PRESET_ERRORS.has(preset.id)) return preset
+    let project = projects.get(preset.project)
+    if (!project) {
+      project = projectFromPreset(preset)
+      console.warn(`[ShaderLab] presets/${preset.id}.json: project "${preset.project}" has no file; using one made from the card`)
+      projects.set(project.id, project)
+      synthesized.push(project)
+    }
+    return resolveBackground(preset, project)
+  })
+  return { presets: resolved, projects: [...PROJECT_FILES, ...synthesized] }
+}
+
+const loaded = resolveAll(loadAll())
+
 /** The file cards, in file order (alphabetical by filename). */
-export const PRESETS: Preset[] = loadAll()
+export const PRESETS: Preset[] = loaded.presets
+
+/** Every project: the files, then any synthesized for a background. */
+export const PROJECTS: Project[] = loaded.projects
 
 export function presetById(id: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id)
@@ -115,7 +149,7 @@ export function presetById(id: string): Preset | undefined {
 const fileListeners = (hotData.listeners ??= new Set())
 
 /** Dev only: the files were re-read after a change on disk. */
-export function onPresetFiles(listener: (presets: Preset[]) => void) {
+export function onPresetFiles(listener: (presets: Preset[], projects: Project[]) => void) {
   fileListeners.add(listener)
   return () => {
     fileListeners.delete(listener)
@@ -124,8 +158,8 @@ export function onPresetFiles(listener: (presets: Preset[]) => void) {
 
 if (import.meta.hot) {
   import.meta.hot.accept((mod) => {
-    const next = (mod as { PRESETS?: Preset[] } | undefined)?.PRESETS
-    if (!next) return
-    for (const l of fileListeners) l(next)
+    const next = mod as { PRESETS?: Preset[]; PROJECT_FILES?: Project[] } | undefined
+    if (!next?.PRESETS) return
+    for (const l of fileListeners) l(next.PRESETS, next.PROJECT_FILES ?? [])
   })
 }

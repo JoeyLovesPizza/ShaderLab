@@ -1,0 +1,168 @@
+{
+  "id": "paper",
+  "meta": {
+    "created": "2026-10-28"
+  },
+  "name": "Paper",
+  "primary": "paper",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.06,
+      "hue": 262,
+      "locked": false,
+      "value": 0.22
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.3,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.25,
+        "on": false
+      },
+      "light": {
+        "height": 1.5,
+        "on": true
+      },
+      "parallax": {
+        "amount": 0.6,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2,
+        "frequency": 85,
+        "on": false,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0.03,
+        "on": false,
+        "rect": [
+          0.08,
+          0.1,
+          0.84,
+          0.8
+        ],
+        "spread": 0.1
+      },
+      "strokes": {
+        "amount": 0.018,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.3,
+        "on": false,
+        "scale": 0.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.13,
+        "distance": 0.5,
+        "hue": 245,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 1.35,
+            "y": 0.95
+          },
+          "control2": {
+            "x": 1.35,
+            "y": 0.95
+          },
+          "end": {
+            "x": 1.75,
+            "y": 1.15
+          },
+          "start": {
+            "x": 0.95,
+            "y": 0.75
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.13,
+            "hue": 245,
+            "value": 0.76
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.13,
+            "hue": 245,
+            "value": 0.76
+          }
+        },
+        "size": 0.3294616639477977,
+        "softness": 0.7,
+        "value": 0.76,
+        "x": 1.35,
+        "y": 0.95
+      },
+      {
+        "chroma": 0.06,
+        "distance": 0.8,
+        "hue": 55,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.2,
+            "y": 0.15
+          },
+          "control2": {
+            "x": 0.2,
+            "y": 0.15
+          },
+          "end": {
+            "x": 0.6,
+            "y": 0.35
+          },
+          "start": {
+            "x": -0.2,
+            "y": -0.05
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.06,
+            "hue": 55,
+            "value": 0.72
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.06,
+            "hue": 55,
+            "value": 0.72
+          }
+        },
+        "size": 0.17970636215334423,
+        "softness": 0.9,
+        "value": 0.72,
+        "x": 0.2,
+        "y": 0.15
+      }
+    ],
+    "modes": {
+      "bold": false,
+      "colour": "warm-cool",
+      "coverage": "blend",
+      "structure": "none"
+    },
+    "texture": {
+      "grain": 0.06
+    }
+  }
+}

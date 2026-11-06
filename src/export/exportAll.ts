@@ -1,5 +1,5 @@
 import manifestSeed from '../../handoff/backgrounds.json'
-import { getDraft } from '../model/cards'
+import { getDraft, getLink } from '../model/cards'
 import { getFamily } from '../model/family'
 import type { Preset } from '../model/types'
 import { validatePreset } from '../model/validate'
@@ -88,7 +88,7 @@ export async function exportCards(
     const draft = getDraft(preset.id)
     const line: ExportLine = { id: preset.id, ok: false, message: '' }
     try {
-      const next = presetFromCard(preset, draft, { stillTime: draft.loop.stillTime, loopSeconds: draft.loop.seconds })
+      const next = presetFromCard(preset, draft, { stillTime: draft.loop.stillTime, loopSeconds: draft.loop.seconds }, getLink(preset.id))
       const result = validatePreset(next)
       if (!result.ok) throw new Error(result.issues.map((i) => `${i.path}: ${i.message}`).join('; '))
       const state = cardStateFrom(preset, draft, getFamily())

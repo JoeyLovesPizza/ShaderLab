@@ -1,0 +1,168 @@
+{
+  "id": "showreel",
+  "meta": {
+    "created": "2026-10-28"
+  },
+  "name": "Showreel",
+  "primary": "showreel",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.01,
+      "hue": 60,
+      "locked": false,
+      "value": 0.78
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.3,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.25,
+        "on": true
+      },
+      "light": {
+        "height": 1.5,
+        "on": true
+      },
+      "parallax": {
+        "amount": 0.6,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2,
+        "frequency": 85,
+        "on": true,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0.03,
+        "on": false,
+        "rect": [
+          0.08,
+          0.1,
+          0.84,
+          0.8
+        ],
+        "spread": 0.1
+      },
+      "strokes": {
+        "amount": 0.018,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.3,
+        "on": false,
+        "scale": 0.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.01,
+        "distance": 0.5,
+        "hue": 60,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.6,
+            "y": 0.5
+          },
+          "control2": {
+            "x": 0.6,
+            "y": 0.5
+          },
+          "end": {
+            "x": 1,
+            "y": 0.7
+          },
+          "start": {
+            "x": 0.2,
+            "y": 0.3
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.01,
+            "hue": 60,
+            "value": 0.3
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.01,
+            "hue": 60,
+            "value": 0.3
+          }
+        },
+        "size": 0.6,
+        "softness": 0.8,
+        "value": 0.3,
+        "x": 0.6,
+        "y": 0.5
+      },
+      {
+        "chroma": 0.12,
+        "distance": 0.8,
+        "hue": 45,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 1.2,
+            "y": 0.85
+          },
+          "control2": {
+            "x": 1.2,
+            "y": 0.85
+          },
+          "end": {
+            "x": 1.6,
+            "y": 1.05
+          },
+          "start": {
+            "x": 0.8,
+            "y": 0.65
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.12,
+            "hue": 45,
+            "value": 0.74
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.12,
+            "hue": 45,
+            "value": 0.74
+          }
+        },
+        "size": 0.17970636215334423,
+        "softness": 0.85,
+        "value": 0.74,
+        "x": 1.2,
+        "y": 0.85
+      }
+    ],
+    "modes": {
+      "bold": false,
+      "colour": "mono",
+      "coverage": "blend",
+      "structure": "relief"
+    },
+    "texture": {
+      "grain": 0.06
+    }
+  }
+}

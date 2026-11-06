@@ -1,0 +1,211 @@
+{
+  "id": "wildflower",
+  "meta": {
+    "created": "2026-10-28"
+  },
+  "name": "Wildflower",
+  "primary": "wildflower",
+  "schema": 2,
+  "spread": 0.4,
+  "style": {
+    "base": {
+      "chroma": 0.05,
+      "hue": 85,
+      "locked": false,
+      "value": 0.82
+    },
+    "depth": {
+      "curve": {
+        "amount": 0.3,
+        "on": true
+      },
+      "haze": {
+        "amount": 0.25,
+        "on": true
+      },
+      "light": {
+        "height": 1.5,
+        "on": true
+      },
+      "parallax": {
+        "amount": 0.6,
+        "on": true
+      },
+      "relief": {
+        "amount": 0.2,
+        "frequency": 85,
+        "on": false,
+        "twist": 6
+      },
+      "shadow": {
+        "amount": 0.5,
+        "offset": 0.03,
+        "on": false,
+        "rect": [
+          0.08,
+          0.1,
+          0.84,
+          0.8
+        ],
+        "spread": 0.1
+      },
+      "strokes": {
+        "amount": 0.018,
+        "chaos": 0,
+        "density": 14,
+        "direction": 20,
+        "follow": 0.3,
+        "followAngle": true,
+        "motion": 0.5,
+        "on": false,
+        "size": 0.35,
+        "taper": 0.25
+      },
+      "swirl": {
+        "amount": 0.3,
+        "on": false,
+        "scale": 0.6
+      }
+    },
+    "masses": [
+      {
+        "chroma": 0.14,
+        "distance": 0.5,
+        "hue": 50,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.75,
+            "y": 1.05
+          },
+          "control2": {
+            "x": 0.75,
+            "y": 1.05
+          },
+          "end": {
+            "x": 1.15,
+            "y": 1.25
+          },
+          "start": {
+            "x": 0.35,
+            "y": 0.85
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.14,
+            "hue": 50,
+            "value": 0.68
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.14,
+            "hue": 50,
+            "value": 0.68
+          }
+        },
+        "size": 0.26955954323001635,
+        "softness": 0.8,
+        "value": 0.68,
+        "x": 0.75,
+        "y": 1.05
+      },
+      {
+        "chroma": 0.12,
+        "distance": 0.8,
+        "hue": 340,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 0.1,
+            "y": 0.55
+          },
+          "control2": {
+            "x": 0.1,
+            "y": 0.55
+          },
+          "end": {
+            "x": 0.5,
+            "y": 0.75
+          },
+          "start": {
+            "x": -0.3,
+            "y": 0.35
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.12,
+            "hue": 340,
+            "value": 0.6
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.12,
+            "hue": 340,
+            "value": 0.6
+          }
+        },
+        "size": 0.2096574225122349,
+        "softness": 0.85,
+        "value": 0.6,
+        "x": 0.1,
+        "y": 0.55
+      },
+      {
+        "chroma": 0.04,
+        "distance": 0.8,
+        "hue": 85,
+        "kind": "blob",
+        "locked": false,
+        "path": {
+          "control1": {
+            "x": 1.2,
+            "y": 0.1
+          },
+          "control2": {
+            "x": 1.2,
+            "y": 0.1
+          },
+          "end": {
+            "x": 1.6,
+            "y": 0.3
+          },
+          "start": {
+            "x": 0.8,
+            "y": -0.1
+          }
+        },
+        "ramp": {
+          "end": {
+            "chroma": 0.04,
+            "hue": 85,
+            "value": 0.3
+          },
+          "fieldMix": 0,
+          "start": {
+            "chroma": 0.04,
+            "hue": 85,
+            "value": 0.3
+          }
+        },
+        "size": 0.2396084828711256,
+        "softness": 0.9,
+        "value": 0.3,
+        "x": 1.2,
+        "y": 0.1
+      }
+    ],
+    "modes": {
+      "bold": false,
+      "colour": "free",
+      "coverage": "blend",
+      "structure": "none"
+    },
+    "texture": {
+      "grain": 0.06
+    }
+  }
+}
