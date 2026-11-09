@@ -154,6 +154,12 @@ Migration: each of the nine presets becomes a project of the same id whose style
 - **Shuffle project** re-rolls the project's style itself, from the family's defaults, within the house-widened ranges, at variety `1 − housePull`; its linked backgrounds follow.
 - The family's `variety` is retired from the panel; the field stays in the file, unused, so no migration is needed.
 
+**Browse and the panel, grouped** (job 3):
+- Browse shows the library grouped by project, in the order of each project's first card. Each group has a header: the project's name, its background count, its Spread, and two actions, **New background** and **Shuffle project**. Its backgrounds follow, primary first, carrying a small **Primary** tag. Grid wraps a group's cards; Rail gives each project its own horizontal rail under its header. Focus is unchanged: a card flies out of its group and back.
+- A card whose background has taken stages for itself shows how many ("2 own") beside the existing "modified" badge. A linked card shows nothing extra.
+- The panel has two scopes, picked at its top: **Background** (today's panel, for the focused card) and **Project** (that card's project). In Project scope the same folders edit the project's style, and every linked background updates live. In Background scope each linkable folder says whether it follows the project: its title reads plainly when linked and gains "· own" when overridden, with a **Relink** button inside that drops the override. Background scope also has **Make primary**.
+- Spread and House pull stay at the top in both scopes.
+
 Built in order (BACKLOG.md): the schema; Spread and House pull in the shuffle with New background; Browse grouped by project with a project panel and linked/overridden marks; motion per project and per mass (shader); handoff and ship for several backgrounds per project. New shape kinds (bands, lines, edges, flow fields) come after, as their own job.
 
 ### Photo stage (Joe, 2026-11-03: "drop in photos and process them with the shader toolkit; the result should be something in between the photo and what we have built here")
