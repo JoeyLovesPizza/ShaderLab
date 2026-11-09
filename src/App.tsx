@@ -4,7 +4,7 @@ import { MotionConfig, useReducedMotion } from 'motion/react'
 import 'dialkit/styles.css'
 import { initialState, reduce, type BrowseView } from './states/machine'
 import { stage } from './shader/stage'
-import { getProject, getProjects, relink, setProjectStyle, shuffleBackground, shuffleProject } from './model/projects'
+import { getProject, getProjects, relink, setPrimary, setProjectStyle, shuffleBackground, shuffleProject } from './model/projects'
 import { clearDirty, getDraft, getLink, revertToFile, setDraft, useDirtyPaths, useModified } from './model/cards'
 import { getFamily } from './model/family'
 import {
@@ -56,7 +56,7 @@ function usePanelOpen() {
 // update lands on a fresh module instance, not these.
 if (import.meta.env.DEV) {
   Object.assign(window, {
-    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto, getProject, getProjects, setProjectStyle, relink, newBackground, shuffleProject },
+    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto, getProject, getProjects, setProjectStyle, setPrimary, relink, newBackground, shuffleProject },
   })
 }
 
@@ -191,16 +191,18 @@ export default function App() {
     setActiveId(preset.id)
     setNotice(`${preset.meta.name}: new card from the family (unsaved)`)
   }
-  const onNewBackground = () => {
-    if (!activePreset) return
-    const preset = newBackground(getLink(activePreset.id).project)
+  // Called from a group header with its project, or from the panel for the active card's.
+  const onNewBackground = (projectId?: string) => {
+    const project = projectId ?? (activePreset ? getLink(activePreset.id).project : undefined)
+    if (!project) return
+    const preset = newBackground(project)
     if (!preset) return
     setActiveId(preset.id)
     setNotice(`${preset.meta.name}: new background in ${preset.project} (unsaved)`)
   }
-  const onShuffleProject = () => {
-    if (!activePreset) return
-    const project = getLink(activePreset.id).project
+  const onShuffleProject = (projectId?: string) => {
+    const project = projectId ?? (activePreset ? getLink(activePreset.id).project : undefined)
+    if (!project) return
     shuffleProject(project)
     setNotice(`${project}: project style re-rolled, linked backgrounds follow`)
   }
@@ -437,6 +439,8 @@ export default function App() {
           onSelect={onSelect}
           onHover={onHover}
           onPhotoDrop={onPhotoDrop}
+          onNewBackground={onNewBackground}
+          onShuffleProject={onShuffleProject}
         />
       </main>
       {isStatic && (
@@ -457,8 +461,8 @@ export default function App() {
             handle={focusedId ? handle : null}
             reduced={reduced}
             isStatic={isStatic}
-            onNewBackground={onNewBackground}
-            onShuffleProject={onShuffleProject}
+            onNewBackground={() => onNewBackground()}
+            onShuffleProject={() => onShuffleProject()}
           />
         </CardBoundary>
       )}

@@ -349,3 +349,9 @@ export function useModified(id: string): boolean {
 export function useDirtyPaths(id: string): string {
   return useSyncExternalStore(subscribeCards, () => [...getDirty(id)].sort().join(' '))
 }
+
+/** How many linkable stages the card has taken for itself. A string key
+    keeps the snapshot comparable; the number is what a cell shows. */
+export function useOwnCount(id: string): number {
+  return useSyncExternalStore(subscribeCards, () => links.get(id)?.overrides.length ?? 0)
+}

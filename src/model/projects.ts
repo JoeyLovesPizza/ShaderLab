@@ -101,6 +101,18 @@ export function setProjectSpread(id: string, spread: number) {
   commit()
 }
 
+/** The background that ships for the project; saves into the project file the way a style edit does. */
+export function setPrimary(id: string, cardId: string) {
+  const project = projects.get(id)
+  if (!project || project.primary === cardId) return
+  projects.set(id, { ...project, primary: cardId })
+  commit()
+}
+
+export function useProjects(): Project[] {
+  return useSyncExternalStore(subscribeProjects, getProjects)
+}
+
 /** The spread of the project a card belongs to. */
 export const spreadOfCard = (cardId: string): number => projects.get(getLink(cardId).project)?.spread ?? DEFAULT_SPREAD
 

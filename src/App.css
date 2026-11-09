@@ -85,6 +85,66 @@
   padding: var(--spacer-24);
 }
 
+/* One group per project. The header is quiet: the cards are the content. */
+.browse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacer-36);
+}
+
+.project__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px var(--spacer-16);
+  margin-bottom: 12px;
+  font-size: var(--size-14);
+  line-height: var(--line-height-16);
+}
+
+.project__name {
+  margin: 0;
+  font: inherit;
+  color: var(--type-headline-primary);
+}
+
+.project__meta {
+  color: var(--type-body-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Beside the name, not at the far edge: DialKit's column sits over the right. */
+.project__actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Text buttons with a 32px hit area; they take a background only on hover. */
+.project__btn {
+  border: 0;
+  padding: 6px 8px;
+  border-radius: var(--corner-8);
+  background: transparent;
+  color: var(--type-body-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.project__btn:hover {
+  background: var(--grey-50);
+  color: var(--type-headline-primary);
+}
+
+.project__btn:active {
+  transform: scale(0.96);
+}
+
+.project__btn:focus-visible {
+  outline: 2px solid var(--grey-900);
+  outline-offset: 2px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -97,7 +157,7 @@
   display: flex;
   gap: 20px;
   overflow-x: auto;
-  padding: var(--spacer-64) var(--spacer-24) var(--spacer-80);
+  padding: var(--spacer-24) var(--spacer-24) var(--spacer-64);
   margin: 0 calc(-1 * var(--spacer-24));
 }
 
@@ -180,11 +240,20 @@
   pointer-events: none;
 }
 
-/* An overlay over the file: edits or a shuffle not yet saved. */
-.cell__badge {
+/* Top right: how many stages the card keeps for itself, then whether it
+   is an overlay over the file (edits or a shuffle not yet saved). */
+.cell__badges {
   position: absolute;
   right: 12px;
   top: 10px;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.cell__badge,
+.cell__own,
+.cell__tag {
   padding: 2px 8px;
   border-radius: 9999px;
   background: rgb(255 255 255 / 0.85);
@@ -192,6 +261,16 @@
   font-size: var(--size-12);
   line-height: var(--line-height-16);
   pointer-events: none;
+}
+
+.cell__own {
+  font-variant-numeric: tabular-nums;
+}
+
+.cell__tag {
+  position: absolute;
+  left: 12px;
+  top: 10px;
 }
 
 .bar__modified {

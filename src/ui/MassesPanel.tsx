@@ -16,18 +16,21 @@ import {
 import { saveCard } from '../export/save'
 import { importPhoto } from '../export/photo'
 import { getFamily, setFamily, useFamily } from '../model/family'
-import { setProjectSpread, shuffleSource, spreadOfCard, useCardSpread } from '../model/projects'
+import { getProject, relink, setPrimary, setProjectSpread, setProjectStyle, shuffleSource, spreadOfCard, subscribeProjects, useCardSpread } from '../model/projects'
+import { styleOf } from '../model/project'
 import { rollScoped, type RollScope } from '../model/shuffle'
 import {
   COLOUR_MODES,
   COVERAGE_MODES,
   DEPTH_ORDER,
+  LINK_PATHS,
   L_MAX,
   L_MIN,
   MAX_MASSES,
   STRUCTURE_MODES,
   type CardDraft,
   type Family,
+  type LinkPath,
   type Mass,
   MASS_KINDS,
   blobMass,
@@ -66,6 +69,29 @@ const SCRUB_STEP = 0.05
 const STATES: StateName[] = ['idle', 'hover', 'active']
 const EASE = { out: 'easeOut', inOut: 'easeInOut', in: 'easeIn', linear: 'linear' } as const
 const MASS_KEYS = ['mass1', 'mass2', 'mass3', 'mass4'] as const
+
+/*
+ * Two scopes (SPEC.md §4): Background is the focused card; Project is the
+ * style of the project it belongs to, edited through the same folders.
+ * The panel is one DialKit config either way. Project scope drops the
+ * folders that belong to a background alone (the config is rebuilt on a
+ * scope change, which DialKit reconciles), and the draft the panel reads
+ * and writes is the card's with the project's style laid over it.
+ */
+const SCOPES = ['Background', 'Project'] as const
+type Scope = (typeof SCOPES)[number]
+
+/** DialKit labels a folder from its key and cannot retitle it live, so the
+    link state is a "Follows project" folder of toggles, one per linkable
+    stage. A key cannot hold a dot, hence `depthLight`. */
+const followKey = (path: LinkPath) => (path.startsWith('depth.') ? `depth${path[6].toUpperCase()}${path.slice(7)}` : path)
+
+/** The draft the panel shows: the card's, with the project's style over it in Project scope. */
+function viewDraft(id: string, scope: Scope): CardDraft {
+  const draft = getDraft(id)
+  const project = scope === 'Project' ? getProject(getLink(id).project) : undefined
+  return project ? { ...draft, ...structuredClone(project.style) } : draft
+}
 
 type Slider = [number, number, number, number]
 type Values = Record<string, unknown>
@@ -133,13 +159,14 @@ function massConfig(raw: Mass, _family: Family) {
 /** A mass slot beyond the draft's count: parked, so adding one is a no-op. */
 const SPARE_MASS: Mass = blobMass({ hue: 0, value: 0.5, chroma: 0, x: 1.2, y: 0.5, size: 0.6, softness: 0.7, distance: 0.8, locked: false })
 
-function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: number, reduced: boolean, isStatic: boolean): DialConfig {
+function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: number, reduced: boolean, isStatic: boolean, scope: Scope, owned: readonly LinkPath[]): DialConfig {
   const masses: Record<string, unknown> = { count: slider(draft.masses.length, 1, MAX_MASSES, 1) }
   MASS_KEYS.forEach((key, i) => {
     masses[key] = massConfig(draft.masses[i] ?? SPARE_MASS, family)
   })
   const d = draft.depth
-  return {
+  const config = {
+    scope: select(SCOPES, scope),
     seed: slider(draft.seed, 0, 999999, 1),
     revertToFile: { type: 'action', label: 'Revert to file' },
     saveToFile: { type: 'action', label: isStatic ? 'Download preset' : 'Save to file' },
@@ -148,6 +175,8 @@ function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: 
     housePull: slider(family.housePull, 0, 1, 0.01),
     newBackground: { type: 'action', label: 'New background' },
     shuffleProject: { type: 'action', label: 'Shuffle project' },
+    makePrimary: { type: 'action', label: 'Make primary' },
+    followsProject: Object.fromEntries(LINK_PATHS.map((path) => [followKey(path), !owned.includes(path)])),
     modes: {
       colour: select(COLOUR_MODES, draft.modes.colour),
       bold: draft.modes.bold,
@@ -236,7 +265,14 @@ function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: 
       // Exclusive of the loop length itself, which wraps to 0.
       scrub: slider(0, 0, loopMax - SCRUB_STEP, SCRUB_STEP),
     },
-  } as DialConfig
+  } as Record<string, unknown>
+  if (scope === 'Project') {
+    // What belongs to a background alone, and the family's own dials.
+    for (const key of ['seed', 'revertToFile', 'saveToFile', 'makePrimary', 'followsProject', 'finish', 'photo', 'light', 'motion']) delete config[key]
+    delete (config.texture as Values).animate
+    delete (config.depth as Values).captionMask
+  }
+  return config as DialConfig
 }
 
 const isValues = (v: unknown): v is Values => typeof v === 'object' && v !== null
@@ -462,14 +498,15 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
   // The scrub slider's range follows the loop length. A control's bounds
   // are part of the config, which DialKit reconciles when it changes.
   const [loopMax, setLoopMax] = useState(getDraft(preset.id).loop.seconds)
+  const [scope, setScope] = useState<Scope>('Background')
 
   // The config is built once per card, so a dial drag never rebuilds it.
   const config = useMemo(
-    () => panelConfig(getDraft(preset.id), family, spreadOfCard(preset.id), loopMax, reduced, isStatic),
+    () => panelConfig(viewDraft(preset.id, scope), family, spreadOfCard(preset.id), loopMax, reduced, isStatic, scope, getLink(preset.id).overrides),
     // The draft is read once per card on purpose; later edits flow the
     // other way, from the panel into the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [preset.id, family, loopMax, reduced, isStatic],
+    [preset.id, family, loopMax, reduced, isStatic, scope],
   )
   const dial = useDialKitController('Card', config, {
     id: 'shaderlab-card',
@@ -477,14 +514,22 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
       if (path.endsWith('revertToFile')) revertToFile(preset.id)
       if (path.endsWith('newBackground')) onNewBackground()
       if (path.endsWith('shuffleProject')) onShuffleProject()
+      if (path.endsWith('makePrimary')) setPrimary(getLink(preset.id).project, preset.id)
       if (path.endsWith('saveToFile')) {
         saveCard(preset).catch((err: unknown) => console.warn('[ShaderLab] save failed:', err))
       }
     },
   })
   const v = dial.values as Values
-  // Values written by a push from the store must not be written back.
-  const pushingRef = useRef(false)
+  // The scope select drives the config; the config follows it one render later.
+  const pickedScope = SCOPES.find((s) => s === v.scope)
+  useEffect(() => {
+    if (pickedScope && pickedScope !== scope) setScope(pickedScope)
+  }, [pickedScope, scope])
+  // The panel's values as they stood right after a push from the store.
+  // Values equal to these came from the store and must not be written back;
+  // a flag would stay set when the push changed nothing the draft reads.
+  const pushedRef = useRef<string | null>(null)
   // Dev only: the controller, so a check can drive the real edit path.
   if (import.meta.env.DEV) {
     const w = window as unknown as { __shaderlab?: Record<string, unknown> }
@@ -494,24 +539,25 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
   // the card's: writing them to the draft was how hovering a thumbnail
   // repainted it as the card before. The push below syncs first.
   const shownPresetRef = useRef<string | null>(null)
+  // A scope change is a switch too: the panel holds the other scope's numbers until the push.
+  const shownKey = `${preset.id}|${scope}`
 
   // --- Panel -> card store -------------------------------------------------
-  const draftKey = stableStringify(draftFromValues(v, getDraft(preset.id)))
+  const draftKey = stableStringify(draftFromValues(v, viewDraft(preset.id, scope)))
   useEffect(() => {
-    if (shownPresetRef.current !== preset.id) {
-      shownPresetRef.current = preset.id
+    if (shownPresetRef.current !== shownKey) {
+      shownPresetRef.current = shownKey
       return
     }
     // The run that follows a push: those values came from the store, and
     // what DialKit made of them (a pad's rounding) must not go back as an
-    // edit. Cleared here, not in a microtask, which would run before this
-    // effect does.
-    if (pushingRef.current) {
-      pushingRef.current = false
-      return
-    }
-    const current = getDraft(preset.id)
+    // edit.
+    const pushed = pushedRef.current
+    pushedRef.current = null
+    if (pushed !== null && stableStringify(v) === pushed) return
+    const current = viewDraft(preset.id, scope)
     const next = draftFromValues(v, current)
+    const projectId = getLink(preset.id).project
     // A mode changed on the panel: re-roll from the card's own seed with
     // that choice forced, but only the fields that mode governs, and never
     // a hand-edited or locked one.
@@ -520,19 +566,34 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
       // The project's style is the origin (the card's own values when it
       // has none), at the project's spread.
       const source = shuffleSource(preset.id)
-      const scope: RollScope = changedModes.includes('coverage')
+      const rollScope: RollScope = changedModes.includes('coverage')
         ? 'coverage'
         : changedModes.includes('structure')
           ? 'structure'
           : 'colour'
+      if (scope === 'Project') {
+        // The style rolls from itself; no card's hand edits apply to it.
+        const rolled = rollScoped(current, current, getFamily(), getDraft(preset.id).seed, rollScope, {
+          forced: next.modes,
+          dirty: new Set(),
+          spread: source.spread,
+        })
+        setProjectStyle(projectId, styleOf(rolled))
+        return
+      }
       setDraft(
         preset.id,
-        rollScoped(source.origin ?? preset, current, getFamily(), current.seed, scope, {
+        rollScoped(source.origin ?? preset, current, getFamily(), current.seed, rollScope, {
           forced: next.modes,
           dirty: getDirty(preset.id),
           spread: source.spread,
         }),
       )
+      return
+    }
+    if (scope === 'Project') {
+      // Linked backgrounds follow at once (setProjectStyle); hand-edit marks are a background's.
+      if (stableStringify(styleOf(next)) !== stableStringify(styleOf(current))) setProjectStyle(projectId, styleOf(next))
       return
     }
     if (stableStringify(next) !== stableStringify(current)) {
@@ -543,7 +604,7 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
     setLoopMax(next.loop.seconds)
     // draftKey stands in for every dial value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, preset.id])
+  }, [draftKey, preset.id, shownKey])
 
   // --- Card store -> panel (a card switch, or the shuffle) --------------------
   useEffect(() => {
@@ -551,17 +612,45 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
       // Renamed or deleted under the panel: the next render brings the
       // card that replaces it.
       if (!hasCard(preset.id)) return
-      const draft = getDraft(preset.id)
+      const draft = viewDraft(preset.id, scope)
       if (stableStringify(draftFromValues(dial.getValues() as Values, draft)) === stableStringify(draft)) return
-      const before = stableStringify(dial.getValues())
-      pushingRef.current = true
       dial.setValues(valuesFromDraft(draft) as never)
-      // No change in the panel means no effect run to clear the flag.
-      if (stableStringify(dial.getValues()) === before) pushingRef.current = false
+      pushedRef.current = stableStringify(dial.getValues())
     }
     push()
-    return subscribeCards(push)
-  }, [dial, preset.id])
+    const offCards = subscribeCards(push)
+    const offProjects = subscribeProjects(push)
+    return () => {
+      offCards()
+      offProjects()
+    }
+  }, [dial, preset.id, scope])
+
+  // --- Links: which stages follow the project --------------------------------------
+  // A toggle per stage, on while it follows. Switching one on relinks it;
+  // switching a linked one off has no meaning (an edit does that), so it springs back.
+  const pushLinks = useRef(() => {})
+  pushLinks.current = () => {
+    if (scope !== 'Background' || !hasCard(preset.id)) return
+    const owned = getLink(preset.id).overrides
+    const want = Object.fromEntries(LINK_PATHS.map((path) => [followKey(path), !owned.includes(path)]))
+    if (stableStringify(folder(dial.getValues() as Values, 'followsProject')) !== stableStringify(want)) {
+      dial.setValues({ followsProject: want } as never)
+    }
+  }
+  useEffect(() => {
+    pushLinks.current()
+    return subscribeCards(() => pushLinks.current())
+  }, [dial, preset.id, scope])
+  const followsKey = stableStringify(folder(v, 'followsProject'))
+  useEffect(() => {
+    if (scope !== 'Background') return
+    const follows = folder(v, 'followsProject')
+    for (const path of getLink(preset.id).overrides) if (follows[followKey(path)] === true) relink(preset.id, path)
+    pushLinks.current()
+    // followsKey stands in for the toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followsKey])
 
   // --- Photo upload through the image control --------------------------------
   // DialKit hands an uploaded picture over as a URL (data: or blob:); a
@@ -600,8 +689,9 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
 
   // --- Family dials: house pull, grain animation, motion ---------------------------
   const housePull = v.housePull as number
-  const grainAnimate = (v.texture as Values).animate as boolean
-  const motionAmount = (v.motion as Values).motion as number
+  // Project scope has no family folders for these; the family's own value stands.
+  const grainAnimate = bool(folder(v, 'texture'), 'animate', family.texture.animate)
+  const motionAmount = num(folder(v, 'motion'), 'motion', family.motion.amount)
   const lightV = folder(v, 'light')
   const lightKey = stableStringify(lightV)
   useEffect(() => {
@@ -632,10 +722,10 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
   }, [housePull, grainAnimate, motionAmount, lightKey])
 
   // --- Transport and states, only with a live card ------------------------------
-  const motion = v.motion as Values
-  const playing = motion.playing as boolean
-  const scrub = motion.scrub as number
-  const stateName = motion.state as StateName
+  const motion = folder(v, 'motion')
+  const playing = bool(motion, 'playing', !reduced)
+  const scrub = num(motion, 'scrub', 0)
+  const stateName = (STATES.find((s) => s === motion.state) ?? 'idle') as StateName
   const prevStateRef = useRef<StateName>('idle')
   const lastHandleRef = useRef<CardHandle | null>(null)
 

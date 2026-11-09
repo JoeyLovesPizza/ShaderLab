@@ -133,6 +133,10 @@ await step(`a stale overlay for ${stalePreset.id} migrated (modified badge, no e
   if ((await badge.count()) === 0) throw new Error(`${stalePreset.id} shows no modified badge: the seeded overlay was dropped or ignored`)
 })
 const n = await count('.cell')
+await step('Browse is grouped: one header per project, nine at the start', async () => {
+  const groups = await count('.project__head')
+  if (groups !== 9 || n !== 9) throw new Error(`expected 9 project groups and 9 cards, got ${groups} groups and ${n} cards`)
+})
 const badgesAtStart = await count('.cell__badge')
 await step(`hover every grid cell (${n}) with the panel open`, async () => {
   for (let i = 0; i < n; i++) await hoverCell(i)
@@ -148,11 +152,11 @@ await step('click every grid card, open Focus, Escape', async () => {
 })
 await step('Grid → Rail, hover each rail cell, → Grid', async () => {
   await page.getByRole('button', { name: 'Rail', exact: true }).click()
-  await page.locator('section.rail').waitFor({ timeout: STEP_MS })
+  await page.locator('.rail').first().waitFor({ timeout: STEP_MS })
   for (let i = 0; i < n; i++) await hoverCell(i)
   await page.mouse.move(5, 500)
   await page.getByRole('button', { name: 'Grid', exact: true }).click()
-  await page.locator('section.grid').waitFor({ timeout: STEP_MS })
+  await page.locator('.grid').first().waitFor({ timeout: STEP_MS })
 })
 await step('change each mode select once (through the real DialKit controller)', async () => {
   await hoverCell(0)
@@ -172,6 +176,17 @@ await step('open and close the Export sheet', async () => {
   await page.locator('.sheet').getByRole('button', { name: 'Done', exact: true }).click()
   await page.locator('.sheet').waitFor({ state: 'detached', timeout: STEP_MS })
   await escapeFocus()
+})
+await step('New background adds a card to its group, and its panel scopes switch', async () => {
+  const group = page.locator('.project').first()
+  const before = await group.locator('.cell').count()
+  await group.getByRole('button', { name: 'New background', exact: true }).click()
+  await page.waitForFunction(([sel, want]) => document.querySelector(sel)?.querySelectorAll('.cell').length === want, ['.project', before + 1], { timeout: STEP_MS })
+  if ((await count('.project__head')) !== 9) throw new Error('New background changed the number of groups')
+  await hoverCell(0)
+  await dial('scope', 'Project')
+  await page.waitForTimeout(150)
+  await dial('scope', 'Background')
 })
 await step('no card broke along the way', alerts)
 

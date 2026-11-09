@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { motion } from 'motion/react'
-import { getDraft, useDirtyPaths, useDraft, useModified } from '../model/cards'
+import { getDraft, useDirtyPaths, useDraft, useModified, useOwnCount } from '../model/cards'
 import { useSource } from '../model/library'
 import { getFamily, useFamily } from '../model/family'
 import { PRESET_ERRORS } from '../model/presets'
@@ -55,6 +55,8 @@ interface CellProps {
   /** Draw the approximate aura behind the card and the tonal check (the Rail). */
   aura?: boolean
   reduced: boolean
+  /** The project's shipping background, in a project that has several. */
+  primary?: boolean
   /** Set while this cell is the focused card. */
   focus: CellFocus | null
   onSelect: (presetId: string) => void
@@ -63,10 +65,11 @@ interface CellProps {
   onPhotoDrop?: (presetId: string, file: File) => void
 }
 
-export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover, onPhotoDrop }: CellProps) {
+export function Cell({ preset, aura = false, reduced, primary = false, focus, onSelect, onHover, onPhotoDrop }: CellProps) {
   const draft = useDraft(preset.id)
   const modified = useModified(preset.id)
   const dirtyPaths = useDirtyPaths(preset.id)
+  const own = useOwnCount(preset.id)
   // null: never saved; a different id: renamed since its file was written.
   const source = useSource(preset.id)
   const unsaved = source === null || (source !== undefined && source !== preset.id)
@@ -271,10 +274,16 @@ export function Cell({ preset, aura = false, reduced, focus, onSelect, onHover, 
         <canvas ref={canvasRef} className="cell__canvas" />
         <canvas ref={posterRef} className="cell__canvas cell__poster" aria-hidden />
         {!focused && <span className="cell__name">{preset.meta.name}</span>}
-        {!focused && (modified || unsaved) && (
-          <span className="cell__badge" title={dirtyPaths || undefined}>
-            {unsaved ? 'unsaved' : 'modified'}
-            {dirtyPaths && <span className="cell__dot" aria-label="has hand edits" />}
+        {!focused && primary && <span className="cell__tag">Primary</span>}
+        {!focused && (modified || unsaved || own > 0) && (
+          <span className="cell__badges">
+            {own > 0 && <span className="cell__own" title="Stages this background keeps for itself">{own} own</span>}
+            {(modified || unsaved) && (
+              <span className="cell__badge" title={dirtyPaths || undefined}>
+                {unsaved ? 'unsaved' : 'modified'}
+                {dirtyPaths && <span className="cell__dot" aria-label="has hand edits" />}
+              </span>
+            )}
           </span>
         )}
       </motion.div>
