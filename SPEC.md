@@ -146,6 +146,14 @@ Link granularity, version one: `base`, `masses`, `texture`, `modes`, and each `d
 
 Migration: each of the nine presets becomes a project of the same id whose style is that card's current values, with the card as its one background and `primary`, and no overrides, so nothing changes on screen. A background file with no `project` gets one synthesized the same way, with a warning.
 
+**Spread and House pull, as the shuffle reads them** (job 2):
+- A background's shuffle starts from its **project's style**, not from its own current values, and `spread` takes the place the family's `variety` had. At spread 0 a shuffle returns the style (a new seed, so only the grain changes); at 1 every rolled number may go anywhere its range allows. Hue jitter scales with spread up to a free hue at 1. Each of the three modes (colour, coverage, structure) is re-rolled with probability `spread` and otherwise kept from the style.
+- The ranges the shuffle rolls within are the family's ranges widened by `1 − housePull` toward the legal limits (L 0.12–0.97, chroma up to the gamut cap, one to four masses, every depth layer allowed, sizes and softness to their validator limits). At House pull 1 the family's ranges and `allowed` flags bind as today; at 0 a project may use anything the shader can draw, including the layers no card uses yet (swirl, ridges, strokes, shadow, finish blurs).
+- Locked items and hand-edited (dirty) values are still never rolled. A stage the shuffle changes becomes an override, as any edit does.
+- **New background** adds a card to a project with id `<project>-<n>` (first free n), a new seed, and the result of one shuffle from the style at the project's spread. It is not the primary.
+- **Shuffle project** re-rolls the project's style itself, from the family's defaults, within the house-widened ranges, at variety `1 − housePull`; its linked backgrounds follow.
+- The family's `variety` is retired from the panel; the field stays in the file, unused, so no migration is needed.
+
 Built in order (BACKLOG.md): the schema; Spread and House pull in the shuffle with New background; Browse grouped by project with a project panel and linked/overridden marks; motion per project and per mass (shader); handoff and ship for several backgrounds per project. New shape kinds (bands, lines, edges, flow fields) come after, as their own job.
 
 ### Photo stage (Joe, 2026-11-03: "drop in photos and process them with the shader toolkit; the result should be something in between the photo and what we have built here")
