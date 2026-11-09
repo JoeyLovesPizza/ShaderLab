@@ -5,6 +5,7 @@ import {
   diffPaths,
   getDirty,
   getDraft,
+  getLink,
   hasCard,
   markDirty,
   revertToFile,
@@ -15,6 +16,7 @@ import {
 import { saveCard } from '../export/save'
 import { importPhoto } from '../export/photo'
 import { getFamily, setFamily, useFamily } from '../model/family'
+import { setProjectSpread, shuffleSource, spreadOfCard, useCardSpread } from '../model/projects'
 import { rollScoped, type RollScope } from '../model/shuffle'
 import {
   COLOUR_MODES,
@@ -40,7 +42,7 @@ import { labToOklch, oklchToHex, parseColor, srgbToOklab } from '../palette/ramp
 /*
  * The card's DialKit panel (SPEC.md §2, the five stages): Base, Masses,
  * Texture, Depth, Motion, in that order, with the seed, the three rolled
- * modes and the family's variety dial at the top.
+ * modes, the project's Spread and the family's House pull at the top.
  *
  * Colour is picked as one colour (Joe: "I cannot pick colours" with
  * separate hue and chroma sliders) and stored as OKLCH h / L / C. The Value
@@ -131,7 +133,7 @@ function massConfig(raw: Mass, _family: Family) {
 /** A mass slot beyond the draft's count: parked, so adding one is a no-op. */
 const SPARE_MASS: Mass = blobMass({ hue: 0, value: 0.5, chroma: 0, x: 1.2, y: 0.5, size: 0.6, softness: 0.7, distance: 0.8, locked: false })
 
-function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced: boolean, isStatic: boolean): DialConfig {
+function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: number, reduced: boolean, isStatic: boolean): DialConfig {
   const masses: Record<string, unknown> = { count: slider(draft.masses.length, 1, MAX_MASSES, 1) }
   MASS_KEYS.forEach((key, i) => {
     masses[key] = massConfig(draft.masses[i] ?? SPARE_MASS, family)
@@ -141,7 +143,11 @@ function panelConfig(draft: CardDraft, family: Family, loopMax: number, reduced:
     seed: slider(draft.seed, 0, 999999, 1),
     revertToFile: { type: 'action', label: 'Revert to file' },
     saveToFile: { type: 'action', label: isStatic ? 'Download preset' : 'Save to file' },
-    variety: slider(family.variety, 0, 1, 0.01),
+    // Spread is the focused card's project; House pull is the family's.
+    spread: slider(spread, 0, 1, 0.01),
+    housePull: slider(family.housePull, 0, 1, 0.01),
+    newBackground: { type: 'action', label: 'New background' },
+    shuffleProject: { type: 'action', label: 'Shuffle project' },
     modes: {
       colour: select(COLOUR_MODES, draft.modes.colour),
       bold: draft.modes.bold,
@@ -445,9 +451,13 @@ interface MassesPanelProps {
   reduced: boolean
   /** Hosted build: the save action downloads instead. */
   isStatic: boolean
+  /** New background in this card's project (App adds it and selects it). */
+  onNewBackground: () => void
+  /** Re-roll this card's project style. */
+  onShuffleProject: () => void
 }
 
-export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelProps) {
+export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground, onShuffleProject }: MassesPanelProps) {
   const family = useFamily()
   // The scrub slider's range follows the loop length. A control's bounds
   // are part of the config, which DialKit reconciles when it changes.
@@ -455,7 +465,7 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
 
   // The config is built once per card, so a dial drag never rebuilds it.
   const config = useMemo(
-    () => panelConfig(getDraft(preset.id), family, loopMax, reduced, isStatic),
+    () => panelConfig(getDraft(preset.id), family, spreadOfCard(preset.id), loopMax, reduced, isStatic),
     // The draft is read once per card on purpose; later edits flow the
     // other way, from the panel into the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -465,6 +475,8 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
     id: 'shaderlab-card',
     onAction: (path) => {
       if (path.endsWith('revertToFile')) revertToFile(preset.id)
+      if (path.endsWith('newBackground')) onNewBackground()
+      if (path.endsWith('shuffleProject')) onShuffleProject()
       if (path.endsWith('saveToFile')) {
         saveCard(preset).catch((err: unknown) => console.warn('[ShaderLab] save failed:', err))
       }
@@ -505,8 +517,9 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
     // a hand-edited or locked one.
     const changedModes = (Object.keys(next.modes) as (keyof Modes)[]).filter((k) => next.modes[k] !== current.modes[k])
     if (changedModes.length) {
-      // The library card is the origin: its file's values, or what a new
-      // card was born with.
+      // The project's style is the origin (the card's own values when it
+      // has none), at the project's spread.
+      const source = shuffleSource(preset.id)
       const scope: RollScope = changedModes.includes('coverage')
         ? 'coverage'
         : changedModes.includes('structure')
@@ -514,7 +527,11 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
           : 'colour'
       setDraft(
         preset.id,
-        rollScoped(preset, current, getFamily(), current.seed, scope, { forced: next.modes, dirty: getDirty(preset.id) }),
+        rollScoped(source.origin ?? preset, current, getFamily(), current.seed, scope, {
+          forced: next.modes,
+          dirty: getDirty(preset.id),
+          spread: source.spread,
+        }),
       )
       return
     }
@@ -565,8 +582,24 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
       })
   }, [photoFile, preset.id])
 
-  // --- Family dials: variety, grain animation, motion ---------------------------
-  const variety = v.variety as number
+  // --- Spread: the card's project, two ways ------------------------------------
+  // Whichever side moved since the last run wins; on a card switch the
+  // project's value is pushed in, never the old card's value out.
+  const storeSpread = useCardSpread(preset.id)
+  const panelSpread = v.spread as number
+  const spreadSeenRef = useRef<{ id: string; store: number; panel: number } | null>(null)
+  useEffect(() => {
+    const seen = spreadSeenRef.current
+    spreadSeenRef.current = { id: preset.id, store: storeSpread, panel: panelSpread }
+    if (!seen || seen.id !== preset.id || seen.store !== storeSpread) {
+      if (panelSpread !== storeSpread) dial.setValues({ spread: storeSpread } as never)
+      return
+    }
+    if (seen.panel !== panelSpread && panelSpread !== storeSpread) setProjectSpread(getLink(preset.id).project, panelSpread)
+  }, [dial, preset.id, storeSpread, panelSpread])
+
+  // --- Family dials: house pull, grain animation, motion ---------------------------
+  const housePull = v.housePull as number
   const grainAnimate = (v.texture as Values).animate as boolean
   const motionAmount = (v.motion as Values).motion as number
   const lightV = folder(v, 'light')
@@ -580,7 +613,7 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
       amount: num(lightV, 'amount', f.light.amount),
     }
     if (
-      f.variety === variety &&
+      f.housePull === housePull &&
       f.texture.animate === grainAnimate &&
       f.motion.amount === motionAmount &&
       stableStringify(f.light) === stableStringify(light)
@@ -589,14 +622,14 @@ export function MassesPanel({ preset, handle, reduced, isStatic }: MassesPanelPr
     }
     setFamily((fam) => ({
       ...fam,
-      variety,
+      housePull,
       texture: { ...fam.texture, animate: grainAnimate },
       motion: { ...fam.motion, amount: motionAmount },
       light,
     }))
     // lightKey stands in for the light folder's values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variety, grainAnimate, motionAmount, lightKey])
+  }, [housePull, grainAnimate, motionAmount, lightKey])
 
   // --- Transport and states, only with a live card ------------------------------
   const motion = v.motion as Values

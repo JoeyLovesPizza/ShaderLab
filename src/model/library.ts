@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react'
-import { dropCard, ensureCard, getDraft, getLink, moveCard, reloadFile, setDraft } from './cards'
+import { familyTemplate, newBackgroundPreset, nextBackgroundId } from './background'
+import { dropCard, ensureCard, getDraft, getLink, hasCard, moveCard, reloadFile, setDraft } from './cards'
 import { getFamily } from './family'
 import { PRESETS, blankPreset, onPresetFiles } from './presets'
-import { registerBackground, renamePrimary } from './projects'
+import { getProject, registerBackground, renamePrimary } from './projects'
 import { newSeed, rollScoped } from './shuffle'
-import { blobMass, type Preset } from './types'
+import type { Preset } from './types'
 import { validatePreset } from './validate'
 
 /*
@@ -138,28 +139,38 @@ export function newCard(): Preset {
   const name = nextUntitled()
   const id = slugify(name)
   const seed = newSeed()
-  const template = blankPreset(id, name)
-  template.seed = seed
-  template.base = { hue: Math.floor(Math.random() * 360), value: (family.base.value[0] + family.base.value[1]) / 2, chroma: 0.03, locked: false }
-  template.masses = [
-    blobMass({ hue: template.base.hue, value: 0.8, chroma: 0.1, x: 1.15, y: 0.85, size: 0.45, softness: 0.8, distance: 0.5, locked: false }),
-    blobMass({ hue: template.base.hue, value: 0.3, chroma: 0.05, x: 0.3, y: 0.2, size: 0.4, softness: 0.85, distance: 0.8, locked: false }),
-  ]
-  template.texture.grain = family.texture.grain
-  for (const layer of ['curve', 'parallax', 'haze', 'swirl', 'relief', 'strokes', 'shadow'] as const) {
-    const rule = family.depth[layer]
-    template.depth[layer].on = rule.on
-    template.depth[layer].amount = (rule.amount[0] + rule.amount[1]) / 2
-  }
-  template.depth.light = { on: family.depth.light.on, height: (family.depth.light.amount[0] + family.depth.light.amount[1]) / 2 }
+  const template = familyTemplate(blankPreset(id, name), family, Math.floor(Math.random() * 360), seed)
   // The roll gives it a face; the rolled values become its baseline.
-  const rolled = rollScoped(template, { ...template }, family, seed, 'all')
+  const rolled = rollScoped(template, { ...template }, family, seed, 'all', { spread: 1 })
   const preset: Preset = registerBackground({ ...template, ...rolled })
   entries.push({ preset, source: null })
   ensureCard(preset)
   refresh()
   return preset
 }
+
+/**
+ * A new background in a project: id `<project>-<n>`, a new seed, one
+ * shuffle from the project's style at its spread, added after the
+ * project's last card. Unsaved, like New and Duplicate, until Save.
+ */
+export function newBackground(projectId: string): Preset | undefined {
+  const project = getProject(projectId)
+  if (!project) return undefined
+  const members = entries.filter((e) => getLink(e.preset.id).project === projectId)
+  // The project's primary, else any of its cards, supplies what a style
+  // does not carry (canvas, loop, states, finish).
+  const base = members.find((e) => e.preset.id === project.primary)?.preset ?? members[0]?.preset ?? blankPreset(projectId, project.name)
+  const id = nextBackgroundId(projectId, entries.map((e) => e.preset.id))
+  const preset = newBackgroundPreset(project, { ...base, ...getDraftOr(base) }, id, newSeed(), getFamily())
+  const last = members.length ? entries.lastIndexOf(members[members.length - 1]) : entries.length - 1
+  entries.splice(last + 1, 0, { preset, source: null })
+  ensureCard(preset)
+  refresh()
+  return preset
+}
+
+const getDraftOr = (preset: Preset) => (hasCard(preset.id) ? getDraft(preset.id) : {})
 
 export function duplicateCard(id: string): Preset | undefined {
   const at = entries.findIndex((e) => e.preset.id === id)

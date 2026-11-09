@@ -1,6 +1,6 @@
 # Backlog
 
-What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-06.
+What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-09.
 
 ## In flight
 
@@ -21,8 +21,8 @@ Open:
 ## Next: projects and backgrounds (SPEC.md §4, "Projects and backgrounds")
 Joe, 2026-11-06: the cards all feel alike, and he wants to set how alike, per project, with many backgrounds per project. Five jobs, in order, one fresh Builder each:
 1. ~~**Schema**~~ landed 2026-11-06: `presets/projects/<id>.json` for the nine cards, `project` and `overrides` on each background, `src/model/project.ts` (resolve, relink, style edits flow to linked backgrounds), `housePull` and `spread` fields, family version 8. All nine cards are pixel-identical to before. No UI yet: in dev, `__shaderlab.getProject`, `setProjectStyle` and `relink`. Overrides are kept in the card store (localStorage `shaderlab:links`); a shuffle that changes a linked stage marks it overridden.
-2. **Spread and House pull** (next) in the shuffle, and New background inside a project.
-3. **Browse grouped by project**, a project panel, linked/overridden marks and Relink.
+2. ~~**Spread and House pull**~~ landed 2026-11-09: a background shuffles from its project's style at the project's Spread; House pull widens the family ranges and opens unused layers (swirl, strokes, shadow) below 1; New background and Shuffle project in the panel, which replace Variety. Two fixes found in review: the dark-mass guardrail no longer drains a project's hero colour (Paper's blue went grey at Spread 0.15), and a roll that loses most of its project's lightness range is re-rolled (Spread 0.85 made blank cards). Known: a "flat" coverage roll can still come out soft and even; judge it in job 3 with real browsing.
+3. **Browse grouped by project** (next), a project panel, linked/overridden marks and Relink.
 4. **Motion per project and per mass**: loop length, speed, travel; per-mass path shape, scale pulse, colour shift. Shader work, bigger model.
 5. **Handoff and ship** for several backgrounds per project; `primary` ships, the rest are alternates.
 
@@ -56,4 +56,5 @@ Then: new shape kinds (bands, lines, edges, flow fields).
 | 2026-11-02 | QA stability pass, `npm run check`, preset library, hosted site on GitHub Pages, Light (lit height field), Strokes, ridge masses, the panel on the hosted build, animated strokes |
 | 2026-11-04 | Photo masses picked by contrast and sized by compactness (daisies no longer wash out) |
 | 2026-11-06 | Projects and backgrounds, job 1: schema, inheritance, migration |
+| 2026-11-09 | Projects and backgrounds, job 2: Spread, House pull, New background, Shuffle project |
 | 2026-11-03 | Cubic ridge with field mix (silk fold), WebM export with MP4 on ship, browser overlays migrated like files, Strokes as brush marks with chaos and follow |

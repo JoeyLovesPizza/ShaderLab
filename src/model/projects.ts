@@ -1,8 +1,12 @@
-import { cardsInProject, getDraft, getLink, replaceDraft } from './cards'
-import { PROJECTS, PROJECT_FILES, onPresetFiles } from './presets'
+import { useSyncExternalStore } from 'react'
+import { rerollStyle } from './background'
+import { cardsInProject, getDirty, getDraft, getLink, replaceDraft, setDraft } from './cards'
+import { getFamily } from './family'
+import { PROJECTS, PROJECT_FILES, blankPreset, onPresetFiles } from './presets'
 import { followStyle, overridesAfterEdit, projectFromPreset, relinkDraft } from './project'
+import { newSeed, rollScoped } from './shuffle'
 import { stableStringify } from './stable'
-import type { LinkPath, Preset, Project, ProjectStyle } from './types'
+import { DEFAULT_SPREAD, type LinkPath, type Preset, type Project, type ProjectStyle } from './types'
 import { validateProject } from './validate'
 
 /*
@@ -87,6 +91,57 @@ export function setProjectStyle(id: string, style: ProjectStyle) {
     replaceDraft(cardId, followStyle(getDraft(cardId), getLink(cardId).overrides, style))
   }
   commit()
+}
+
+/** The project's spread; saves into the project file the way a style edit does. */
+export function setProjectSpread(id: string, spread: number) {
+  const project = projects.get(id)
+  if (!project || project.spread === spread) return
+  projects.set(id, { ...project, spread })
+  commit()
+}
+
+/** The spread of the project a card belongs to. */
+export const spreadOfCard = (cardId: string): number => projects.get(getLink(cardId).project)?.spread ?? DEFAULT_SPREAD
+
+export function useCardSpread(cardId: string): number {
+  return useSyncExternalStore(subscribeProjects, () => spreadOfCard(cardId))
+}
+
+/**
+ * A background shuffled from its project: the style is the origin and the
+ * project's spread the variety (SPEC.md §4). A card with no project style
+ * to hand shuffles from its own values. Changed linked stages become
+ * overrides, as any edit does.
+ */
+export function shuffleBackground(cardId: string, seed: number, options: { ignoreDirty?: boolean } = {}) {
+  const draft = getDraft(cardId)
+  const project = projects.get(getLink(cardId).project)
+  setDraft(
+    cardId,
+    rollScoped(project?.style ?? draft, draft, getFamily(), seed, 'all', {
+      dirty: getDirty(cardId),
+      ignoreDirty: options.ignoreDirty,
+      spread: project?.spread,
+    }),
+  )
+}
+
+/** The origin and spread a scoped roll (a mode changed on the panel) reads. */
+export function shuffleSource(cardId: string): { origin: ProjectStyle | undefined; spread: number | undefined } {
+  const project = projects.get(getLink(cardId).project)
+  return { origin: project?.style, spread: project?.spread }
+}
+
+/**
+ * Re-rolls the project's style from the family defaults, within the
+ * house-widened ranges at variety `1 − housePull`; its linked backgrounds
+ * follow (setProjectStyle).
+ */
+export function shuffleProject(id: string, seed = newSeed()) {
+  const project = projects.get(id)
+  if (!project) return
+  setProjectStyle(id, rerollStyle(blankPreset(id, project.name), getFamily(), seed))
 }
 
 /** Drops one override on a background and takes the project's value for it again. */

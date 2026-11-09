@@ -4,13 +4,14 @@ import { MotionConfig, useReducedMotion } from 'motion/react'
 import 'dialkit/styles.css'
 import { initialState, reduce, type BrowseView } from './states/machine'
 import { stage } from './shader/stage'
-import { getProject, getProjects, relink, setProjectStyle } from './model/projects'
-import { clearDirty, getDirty, getDraft, revertToFile, setDraft, useDirtyPaths, useModified } from './model/cards'
+import { getProject, getProjects, relink, setProjectStyle, shuffleBackground, shuffleProject } from './model/projects'
+import { clearDirty, getDraft, getLink, revertToFile, setDraft, useDirtyPaths, useModified } from './model/cards'
 import { getFamily } from './model/family'
 import {
   cardById,
   duplicateCard,
   getCards,
+  newBackground,
   newCard,
   removeCard,
   renameCard,
@@ -18,7 +19,7 @@ import {
   useCards,
   useSource,
 } from './model/library'
-import { newSeed, rollScoped, shuffle } from './model/shuffle'
+import { newSeed, shuffle } from './model/shuffle'
 import { deleteCardFile, saveCard } from './export/save'
 import { importPhoto } from './export/photo'
 import { exportAll, exportCards } from './export/exportAll'
@@ -55,7 +56,7 @@ function usePanelOpen() {
 // update lands on a fresh module instance, not these.
 if (import.meta.env.DEV) {
   Object.assign(window, {
-    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto, getProject, getProjects, setProjectStyle, relink },
+    __shaderlab: { stage, getDraft, setDraft, revertToFile, getFamily, getCards, cardById, shuffle, importPhoto, getProject, getProjects, setProjectStyle, relink, newBackground, shuffleProject },
   })
 }
 
@@ -146,10 +147,10 @@ export default function App() {
   // Shuffle: everything not dirty and not locked, with a new seed.
   // "Shuffle (all fields)" ignores dirty marks but still respects locks.
   // Shuffle all: every card, each with its own seed.
+  // Each shuffles from its project's style at the project's spread.
   const shuffleOne = (id: string, seed: number, ignoreDirty = false) => {
-    const origin = cardById(id)
-    if (!origin) return
-    setDraft(id, rollScoped(origin, getDraft(id), getFamily(), seed, 'all', { dirty: getDirty(id), ignoreDirty }))
+    if (!cardById(id)) return
+    shuffleBackground(id, seed, { ignoreDirty })
   }
   const onShuffle = () => shuffleOne(targetId(), newSeed())
   const onShuffleAllFields = () => shuffleOne(targetId(), newSeed(), true)
@@ -189,6 +190,19 @@ export default function App() {
     const preset = newCard()
     setActiveId(preset.id)
     setNotice(`${preset.meta.name}: new card from the family (unsaved)`)
+  }
+  const onNewBackground = () => {
+    if (!activePreset) return
+    const preset = newBackground(getLink(activePreset.id).project)
+    if (!preset) return
+    setActiveId(preset.id)
+    setNotice(`${preset.meta.name}: new background in ${preset.project} (unsaved)`)
+  }
+  const onShuffleProject = () => {
+    if (!activePreset) return
+    const project = getLink(activePreset.id).project
+    shuffleProject(project)
+    setNotice(`${project}: project style re-rolled, linked backgrounds follow`)
   }
   const onDuplicate = () => {
     if (!activePreset) return
@@ -438,7 +452,14 @@ export default function App() {
             setNotice(`Card panel failed: ${message}`)
           }}
         >
-          <MassesPanel preset={activePreset} handle={focusedId ? handle : null} reduced={reduced} isStatic={isStatic} />
+          <MassesPanel
+            preset={activePreset}
+            handle={focusedId ? handle : null}
+            reduced={reduced}
+            isStatic={isStatic}
+            onNewBackground={onNewBackground}
+            onShuffleProject={onShuffleProject}
+          />
         </CardBoundary>
       )}
       {/* DialKit hides framework roots in production builds by default. The
