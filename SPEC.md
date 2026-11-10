@@ -168,6 +168,11 @@ Migration: each of the nine presets becomes a project of the same id whose style
 - Defaults reproduce today exactly: travel 0.6, tempo 2, every mass a circle at travel 1, angle 0, pulse 0, shift 0. The shuffle rolls mass motion within house ranges scaled by Spread, like any other stage.
 - Ridges move as a whole curve (as now); pulse widens and narrows the crest; shift moves its ramp's hues together.
 
+**Handoff for several backgrounds per project** (job 5). Additive, so Portfolio's lookup by card id keeps working:
+- `handoff/backgrounds.json` keeps its `backgrounds` array, one entry per exported background, each gaining `project` and `primary` (true for the project's primary). A new top-level `projects` array lists each project once: `id`, `name`, `primary` (a background id) and `backgrounds` (its ids, primary first).
+- `ShaderBackground` keeps `id` and gains `project` (renders that project's primary) and `variant` (an index into its backgrounds, 0 = primary), so a card can show an alternate without knowing its id.
+- Export all exports every background in the library; ship already carries every file in `out/`. `npm run ship` honours `SHADERLAB_PORTFOLIO` (a path to use instead of `../Portfolio`), for dry runs.
+
 Built in order (BACKLOG.md): the schema; Spread and House pull in the shuffle with New background; Browse grouped by project with a project panel and linked/overridden marks; motion per project and per mass (shader); handoff and ship for several backgrounds per project. New shape kinds (bands, lines, edges, flow fields) come after, as their own job.
 
 ### Photo stage (Joe, 2026-11-03: "drop in photos and process them with the shader toolkit; the result should be something in between the photo and what we have built here")
