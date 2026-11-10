@@ -25,9 +25,11 @@ Joe, 2026-11-06: the cards all feel alike, and he wants to set how alike, per pr
 3. ~~**Browse grouped by project**~~ landed 2026-11-09: a header per project (name, count, Spread, New background, Shuffle project), primary first with a tag, an "N own" badge, a Background/Project scope in the panel, Make primary. DialKit 2.0.2 can't retitle a folder live, so links are a "Follows Project" folder of on/off toggles, one per stage; switching one on relinks it.
 3b. ~~**Siblings that follow their project**~~ landed 2026-11-10: each background has a `variation` seed (null for the nine originals); its linked stages are derived from the project's style at that seed and the project's Spread. New background and Shuffle set a seed and mark nothing own; a style, Spread or House pull change re-derives every sibling live; unsaved siblings survive a reload unchanged. Family version 9. Tuning to judge: Spread is not smooth, since each sibling's colour mode, coverage and structure flip at their own dice value, so a drag makes some siblings jump rather than drift.
 4. ~~**Motion per project and per mass**~~ landed 2026-11-10: a card `motion` stage (travel, tempo; a LinkPath), per-mass `motion` (path, travel, angle, pulse, shift), rolled by the shuffle at the spread, a Motion folder per mass and Travel/Tempo/Loop seconds on the card. The family's Motion dial is gone; `family.motion` is the house default and ranges. Family version 10. The nine cards render pixel-identically (checked against renders from before job 1, max diff 0) and loops meet exactly. House ranges: travel 0.35–0.85, tempo 1–3, mass travel 0.6–1.5, pulse 0–0.15, shift 0–18°. **Open: fps not measured after the change.** The app was not on screen, so frame timing was meaningless; before, six thumbnails plus one focused card ran at 60 fps (GPU 0.5–1.6 ms). Measure again with the window visible before merging.
-5. **Handoff and ship** (next) for several backgrounds per project; `primary` ships, the rest are alternates.
+5. ~~**Handoff and ship**~~ landed 2026-11-10: `handoff/backgrounds.json` gains `project` and `primary` on each background and a `projects` list (primary first); `ShaderBackground` takes `project` and `variant` as well as `id`; `npm run ship` honours `SHADERLAB_PORTFOLIO` for dry runs. Run ship from the main checkout: from a worktree, `../Portfolio` does not exist. Export all sends every card in the library, saved or not, so save or remove experiments before shipping.
 
-Then: new shape kinds (bands, lines, edges, flow fields).
+Before merging to main: measure fps with the window visible (job 4), and Joe looks at a project with a few backgrounds in the app.
+
+Then: smooth Spread (modes flip at thresholds, so siblings jump), and new shape kinds (bands, lines, edges, flow fields).
 
 ## Next, after that
 - **Video clips per state.** Each preset's `states` block (idle, hover, active) is previewed in Focus. Export should write one loop per state, idle and active only (SPEC.md §4, runtime path A).
@@ -60,5 +62,6 @@ Then: new shape kinds (bands, lines, edges, flow fields).
 | 2026-11-09 | Projects and backgrounds, job 2: Spread, House pull, New background, Shuffle project |
 | 2026-11-09 | Projects and backgrounds, job 3: grouped Browse, panel scopes, Follows Project, Make primary |
 | 2026-11-10 | Projects and backgrounds, job 3b: variation seeds, so siblings follow their project and Spread is live |
+| 2026-11-10 | Projects and backgrounds, job 5: manifest projects and alternates, ShaderBackground by project |
 | 2026-11-10 | Projects and backgrounds, job 4: motion per project and per mass (path, travel, pulse, colour shift, tempo, loop length) |
 | 2026-11-03 | Cubic ridge with field mix (silk fold), WebM export with MP4 on ship, browser overlays migrated like files, Strokes as brush marks with chaos and follow |

@@ -51,6 +51,24 @@ positioned absolutely to fill the art box, so the art box needs
 paint on top in DOM order. For parallax, transform the background and the
 artwork by different amounts; the component takes a `style` prop for that.
 
+## A project's primary, and alternates
+
+Each project (`projects` in `backgrounds.json`) has one **primary**, the
+background that ships for it, and may have alternates. A card does not need to
+know a background's id:
+
+```tsx
+<ShaderBackground project="wildflower" />             {/* the primary */}
+<ShaderBackground project="wildflower" variant={1} /> {/* the first alternate */}
+```
+
+`variant` indexes the project's `backgrounds` list, primary first, so 0 is the
+primary. An index out of range shows the primary (with a console warning in
+dev). Pass exactly one of `id` or `project`. The component reads
+`/shaders/backgrounds.json` once to resolve a project, and draws nothing until
+it arrives. Ids still work as before: `<ShaderBackground id="wildflower" />`.
+In the manifest each background also carries `project` and `primary`.
+
 ## Lighting the card glow from the background
 
 Portfolio's `useCardGlow` samples whatever `CanvasImageSource` it is handed. To
@@ -83,5 +101,6 @@ tuned for (`wildflower`, `human-in-the-loop`, `dash`, `dropbox-meetings`,
 ## Regenerating
 
 Tune in ShaderLab (`npm run dev`, port 5176), save the card to file, press
-Export all, then `npm run ship`. The WebPs, presets and manifest in Portfolio
+Export all, then `npm run ship` (`SHADERLAB_PORTFOLIO=<path>` ships somewhere
+else, for a dry run). The WebPs, presets and manifest in Portfolio
 are overwritten; nothing under `Portfolio/src` is touched.

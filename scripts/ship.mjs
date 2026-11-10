@@ -6,6 +6,8 @@
  *   out/photos/<id>.webp   ->  Portfolio/public/work/shaders/photos/<id>.webp
  *   out/<id>.json          ->  Portfolio/public/shaders/<id>.json
  *   handoff/backgrounds.json -> Portfolio/public/shaders/backgrounds.json
+ * Portfolio is ../Portfolio unless SHADERLAB_PORTFOLIO names another folder
+ * (absolute, or relative to the current directory): use it for a dry run.
  * Creates the folders, prints every file it wrote, touches nothing under
  * Portfolio/src. The component and CSS stay in handoff/; an agent copies them
  * in by hand following handoff/README.md.
@@ -23,10 +25,13 @@ import { fileURLToPath } from 'node:url'
 const run = promisify(execFile)
 const root = fileURLToPath(new URL('..', import.meta.url))
 const out = resolve(root, 'out')
-const portfolio = resolve(root, '..', 'Portfolio')
+const portfolio = process.env.SHADERLAB_PORTFOLIO ? resolve(process.env.SHADERLAB_PORTFOLIO) : resolve(root, '..', 'Portfolio')
 const imgDir = resolve(portfolio, 'public', 'work', 'shaders')
 const jsonDir = resolve(portfolio, 'public', 'shaders')
-const show = (p) => p.replace(`${portfolio}/`, 'Portfolio/')
+// A dry run into SHADERLAB_PORTFOLIO prints its real folder, so the log
+// never claims Portfolio was written when it wasn't.
+const label = process.env.SHADERLAB_PORTFOLIO ? `${portfolio}/` : 'Portfolio/'
+const show = (p) => p.replace(`${portfolio}/`, label)
 
 const files = (await readdir(out)).filter((f) => f.endsWith('.png') || f.endsWith('.json') || f.endsWith('.webm'))
 // Photos exported alongside their cards, as they are (already WebP q88).

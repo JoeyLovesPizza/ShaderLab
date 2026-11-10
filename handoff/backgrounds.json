@@ -1,5 +1,5 @@
 {
-  "readme": "ShaderLab backgrounds for Portfolio carousel cards: a library, imported per card by id, not one per project. `file` is the art-layer image, `preset` is the ShaderLab recipe it was rendered from, `shadowColor` is the image's average colour for projects.ts. Regenerated on every Export all. See ~/Projects/ShaderLab/handoff/README.md.",
+  "readme": "ShaderLab backgrounds for Portfolio carousel cards: a library, imported per card by id, not one per project. `backgrounds` lists every exported background: `file` is the art-layer image, `preset` the ShaderLab recipe it was rendered from, `shadowColor` its average colour for projects.ts, `project` the project it follows, `primary` true for the one its project ships. `projects` lists each project once, with `primary` and `backgrounds` (ids, primary first, then the alternates): a card asks for a project to get its primary, or for a variant index to get an alternate. Lookup by background id still works. Regenerated on every Export all. See ~/Projects/ShaderLab/handoff/README.md.",
   "size": {
     "width": 1226,
     "height": 816,
@@ -10,75 +10,167 @@
     {
       "id": "dash",
       "name": "Dash",
+      "project": "dash",
       "file": "/work/shaders/card-dash.webp",
       "preset": "/shaders/dash.json",
       "shadowColor": "#BE95B0",
-      "palette": "light base, warm-cool colour, blend coverage, relief, 2 masses"
+      "palette": "light base, warm-cool colour, blend coverage, relief, 2 masses",
+      "primary": true
     },
     {
       "id": "dropbox-meetings",
       "name": "Dropbox meetings",
+      "project": "dropbox-meetings",
       "file": "/work/shaders/card-dropbox-meetings.webp",
       "preset": "/shaders/dropbox-meetings.json",
       "shadowColor": "#A34154",
-      "palette": "light base, warm-cool colour, blend coverage, no structure, 2 masses"
+      "palette": "light base, warm-cool colour, blend coverage, no structure, 2 masses",
+      "primary": true
     },
     {
       "id": "human-in-the-loop",
       "name": "Human In the Loop",
+      "project": "human-in-the-loop",
       "file": "/work/shaders/card-human-in-the-loop.webp",
       "preset": "/shaders/human-in-the-loop.json",
       "shadowColor": "#936F3C",
-      "palette": "dark base, mono colour, blend coverage, no structure, 2 masses"
+      "palette": "dark base, mono colour, blend coverage, no structure, 2 masses",
+      "primary": true
     },
     {
       "id": "painted-grass",
       "name": "Painted grass",
+      "project": "painted-grass",
       "file": "/work/shaders/card-painted-grass.webp",
       "preset": "/shaders/painted-grass.json",
       "shadowColor": "#7D874A",
-      "palette": "light base, mono colour, blend coverage, strokes, 2 masses"
+      "palette": "light base, mono colour, blend coverage, strokes, 2 masses",
+      "primary": true
     },
     {
       "id": "paper",
       "name": "Paper",
+      "project": "paper",
       "file": "/work/shaders/card-paper.webp",
       "preset": "/shaders/paper.json",
       "shadowColor": "#3E5C7C",
-      "palette": "dark base, warm-cool colour, blend coverage, no structure, 2 masses"
+      "palette": "dark base, warm-cool colour, blend coverage, no structure, 2 masses",
+      "primary": true
     },
     {
       "id": "showreel",
       "name": "Showreel",
+      "project": "showreel",
       "file": "/work/shaders/card-showreel.webp",
       "preset": "/shaders/showreel.json",
       "shadowColor": "#5D473C",
-      "palette": "light base, mono colour, blend coverage, relief, 2 masses"
+      "palette": "light base, mono colour, blend coverage, relief, 2 masses",
+      "primary": true
     },
     {
       "id": "silk-fold",
       "name": "Silk fold",
+      "project": "silk-fold",
       "file": "/work/shaders/card-silk-fold.webp",
       "preset": "/shaders/silk-fold.json",
       "shadowColor": "#CD755C",
-      "palette": "light base, free colour, block coverage, no structure, 1 masses"
+      "palette": "light base, free colour, block coverage, no structure, 1 masses",
+      "primary": true
     },
     {
       "id": "wildflower",
       "name": "Wildflower",
+      "project": "wildflower",
       "file": "/work/shaders/card-wildflower.webp",
       "preset": "/shaders/wildflower.json",
       "shadowColor": "#A06F5B",
-      "palette": "light base, free colour, blend coverage, no structure, 3 masses"
+      "palette": "light base, free colour, blend coverage, no structure, 3 masses",
+      "primary": true
     },
     {
       "id": "daisies",
       "name": "Daisies",
+      "project": "daisies",
       "file": "/work/shaders/card-daisies.webp",
       "preset": "/shaders/daisies.json",
       "shadowColor": "#DCD5D5",
       "palette": "light base, warm-cool colour, block coverage, relief, 2 masses",
-      "photo": "/work/shaders/photos/daisies.webp"
+      "photo": "/work/shaders/photos/daisies.webp",
+      "primary": true
+    }
+  ],
+  "projects": [
+    {
+      "id": "dash",
+      "name": "Dash",
+      "primary": "dash",
+      "backgrounds": [
+        "dash"
+      ]
+    },
+    {
+      "id": "dropbox-meetings",
+      "name": "Dropbox meetings",
+      "primary": "dropbox-meetings",
+      "backgrounds": [
+        "dropbox-meetings"
+      ]
+    },
+    {
+      "id": "human-in-the-loop",
+      "name": "Human In the Loop",
+      "primary": "human-in-the-loop",
+      "backgrounds": [
+        "human-in-the-loop"
+      ]
+    },
+    {
+      "id": "painted-grass",
+      "name": "Painted grass",
+      "primary": "painted-grass",
+      "backgrounds": [
+        "painted-grass"
+      ]
+    },
+    {
+      "id": "paper",
+      "name": "Paper",
+      "primary": "paper",
+      "backgrounds": [
+        "paper"
+      ]
+    },
+    {
+      "id": "showreel",
+      "name": "Showreel",
+      "primary": "showreel",
+      "backgrounds": [
+        "showreel"
+      ]
+    },
+    {
+      "id": "silk-fold",
+      "name": "Silk fold",
+      "primary": "silk-fold",
+      "backgrounds": [
+        "silk-fold"
+      ]
+    },
+    {
+      "id": "wildflower",
+      "name": "Wildflower",
+      "primary": "wildflower",
+      "backgrounds": [
+        "wildflower"
+      ]
+    },
+    {
+      "id": "daisies",
+      "name": "Daisies",
+      "primary": "daisies",
+      "backgrounds": [
+        "daisies"
+      ]
     }
   ]
 }

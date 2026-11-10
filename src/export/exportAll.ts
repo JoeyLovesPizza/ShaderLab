@@ -1,6 +1,7 @@
 import manifestSeed from '../../handoff/backgrounds.json'
 import { getDraft, getLink } from '../model/cards'
 import { getFamily } from '../model/family'
+import { getProject } from '../model/projects'
 import type { Preset } from '../model/types'
 import { validatePreset } from '../model/validate'
 import { cardStateFrom, stage } from '../shader/stage'
@@ -9,6 +10,7 @@ import { API_BASE, whenProbed } from './mode'
 import { exportPng } from './png'
 import { photoBlob } from './photoStore'
 import { WEBM_UNSUPPORTED, canExportWebm, exportWebm } from './webm'
+import { buildManifest, type ManifestBackground } from './manifest'
 import { presetFromCard, serializePreset } from './preset'
 
 /*
@@ -16,26 +18,14 @@ import { presetFromCard, serializePreset } from './preset'
  * they are written into out/ through its middleware, and `npm run ship`
  * hands them to Portfolio. Hosted, each file downloads in turn with the
  * same names. Export all also regenerates handoff/backgrounds.json from
- * the library, with each card's mean colour as its `shadowColor`.
+ * the library (every card, saved or not, as its draft stands), with each
+ * card's mean colour as its `shadowColor`, and the projects they belong to.
  */
 
 export interface ExportLine {
   id: string
   ok: boolean
   message: string
-}
-
-interface Background {
-  id: string
-  name: string
-  file: string
-  preset: string
-  shadowColor: string
-  palette: string
-  /** The loop as H.264 MP4, when a WebM was exported (ship.mjs transcodes it). */
-  video?: string
-  /** The card's photo, when it has one. */
-  photo?: string
 }
 
 async function post(url: string, body: Blob | string, type: string): Promise<string> {
@@ -83,7 +73,7 @@ export async function exportCards(
 ): Promise<ExportLine[]> {
   const lines: ExportLine[] = []
   const isStatic = await whenProbed()
-  const backgrounds: Background[] = []
+  const backgrounds: ManifestBackground[] = []
   for (const preset of presets) {
     const draft = getDraft(preset.id)
     const line: ExportLine = { id: preset.id, ok: false, message: '' }
@@ -142,6 +132,7 @@ export async function exportCards(
       backgrounds.push({
         id: preset.id,
         name: preset.meta.name,
+        project: getLink(preset.id).project,
         file: `/work/shaders/card-${preset.id}.webp`,
         preset: `/shaders/${preset.id}.json`,
         shadowColor: meanColor(preset, draft.loop.stillTime),
@@ -158,7 +149,11 @@ export async function exportCards(
   }
 
   if (options.manifest) {
-    const manifest = { readme: manifestSeed.readme, size: manifestSeed.size, backgrounds }
+    const projects = [...new Set(backgrounds.map((b) => b.project))].flatMap((id) => {
+      const p = getProject(id)
+      return p ? [{ id, name: p.name, primary: p.primary }] : []
+    })
+    const manifest = buildManifest({ readme: manifestSeed.readme, size: manifestSeed.size }, backgrounds, projects)
     const text = `${JSON.stringify(manifest, null, 2)}\n`
     const line: ExportLine = { id: 'backgrounds', ok: false, message: '' }
     try {
