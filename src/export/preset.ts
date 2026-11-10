@@ -11,7 +11,7 @@ export function presetFromCard(
   preset: Preset,
   draft: CardDraft,
   loop: { stillTime: number; loopSeconds: number },
-  link?: { project: string; overrides: LinkPath[] },
+  link?: { project: string; overrides: LinkPath[]; variation: number | null },
 ): Preset {
   const r = (n: number, places = 4) => Number(n.toFixed(places))
   const d = draft.depth
@@ -19,6 +19,7 @@ export function presetFromCard(
     ...preset,
     project: link?.project ?? preset.project,
     overrides: [...(link?.overrides ?? preset.overrides)],
+    variation: link ? link.variation : preset.variation,
     seed: draft.seed,
     modes: { ...draft.modes },
     base: { ...draft.base, hue: r(draft.base.hue, 1), value: r(draft.base.value), chroma: r(draft.base.chroma) },

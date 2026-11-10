@@ -1,6 +1,6 @@
 # Backlog
 
-What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-09.
+What is in flight, next, and known broken. SPEC.md holds direction and decisions; this file holds status. Update it when a job lands, stops, or changes shape. Last updated 2026-11-10.
 
 ## In flight
 
@@ -23,8 +23,8 @@ Joe, 2026-11-06: the cards all feel alike, and he wants to set how alike, per pr
 1. ~~**Schema**~~ landed 2026-11-06: `presets/projects/<id>.json` for the nine cards, `project` and `overrides` on each background, `src/model/project.ts` (resolve, relink, style edits flow to linked backgrounds), `housePull` and `spread` fields, family version 8. All nine cards are pixel-identical to before. No UI yet: in dev, `__shaderlab.getProject`, `setProjectStyle` and `relink`. Overrides are kept in the card store (localStorage `shaderlab:links`); a shuffle that changes a linked stage marks it overridden.
 2. ~~**Spread and House pull**~~ landed 2026-11-09: a background shuffles from its project's style at the project's Spread; House pull widens the family ranges and opens unused layers (swirl, strokes, shadow) below 1; New background and Shuffle project in the panel, which replace Variety. Two fixes found in review: the dark-mass guardrail no longer drains a project's hero colour (Paper's blue went grey at Spread 0.15), and a roll that loses most of its project's lightness range is re-rolled (Spread 0.85 made blank cards). Known: a "flat" coverage roll can still come out soft and even; judge it in job 3 with real browsing.
 3. ~~**Browse grouped by project**~~ landed 2026-11-09: a header per project (name, count, Spread, New background, Shuffle project), primary first with a tag, an "N own" badge, a Background/Project scope in the panel, Make primary. DialKit 2.0.2 can't retitle a folder live, so links are a "Follows Project" folder of on/off toggles, one per stage; switching one on relinks it.
-3b. **Siblings that follow their project** (next, found in review): New background and Shuffle mark nearly every stage "own" (10–11 of 12), because a shuffle nudges every stage and job 1 counts any change as an override. Generated backgrounds then stop following the project, which defeats the grouping. Proposed: a linked background stores a variation seed, and its linked stages are derived from the project's style at that seed and the project's Spread; only hand edits become overrides. A style edit or a Spread change re-derives every sibling live. Primaries and migrated cards carry no seed and equal the style.
-4. **Motion per project and per mass**: loop length, speed, travel; per-mass path shape, scale pulse, colour shift. Shader work, bigger model.
+3b. ~~**Siblings that follow their project**~~ landed 2026-11-10: each background has a `variation` seed (null for the nine originals); its linked stages are derived from the project's style at that seed and the project's Spread. New background and Shuffle set a seed and mark nothing own; a style, Spread or House pull change re-derives every sibling live; unsaved siblings survive a reload unchanged. Family version 9. Tuning to judge: Spread is not smooth, since each sibling's colour mode, coverage and structure flip at their own dice value, so a drag makes some siblings jump rather than drift.
+4. **Motion per project and per mass** (next): loop length, speed, travel; per-mass path shape, scale pulse, colour shift. Shader work, bigger model.
 5. **Handoff and ship** for several backgrounds per project; `primary` ships, the rest are alternates.
 
 Then: new shape kinds (bands, lines, edges, flow fields).
@@ -59,4 +59,5 @@ Then: new shape kinds (bands, lines, edges, flow fields).
 | 2026-11-06 | Projects and backgrounds, job 1: schema, inheritance, migration |
 | 2026-11-09 | Projects and backgrounds, job 2: Spread, House pull, New background, Shuffle project |
 | 2026-11-09 | Projects and backgrounds, job 3: grouped Browse, panel scopes, Follows Project, Make primary |
+| 2026-11-10 | Projects and backgrounds, job 3b: variation seeds, so siblings follow their project and Spread is live |
 | 2026-11-03 | Cubic ridge with field mix (silk fold), WebM export with MP4 on ship, browser overlays migrated like files, Strokes as brush marks with chaos and follow |

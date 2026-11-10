@@ -175,5 +175,6 @@
   },
   "texture": {
     "grain": 0.08
-  }
+  },
+  "variation": null
 }

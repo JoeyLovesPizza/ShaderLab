@@ -402,11 +402,9 @@ describe('new background and shuffle project', () => {
     expect(a.seed).toBe(4242)
     expect(a.masses.every((m) => !m.locked)).toBe(true)
     expect(validatePreset(JSON.parse(JSON.stringify(a))).ok).toBe(true)
-    // What differs from the style is overridden, nothing else.
-    for (const path of LINK_PATHS) {
-      const same = JSON.stringify(valueAt(a, path)) === JSON.stringify(valueAt(project.style, path))
-      expect(a.overrides.includes(path), path).toBe(!same)
-    }
+    // It follows its project: a variation seed, nothing overridden.
+    expect(a.variation).toBe(4242)
+    expect(a.overrides).toEqual([])
     // At spread 0 it is the style.
     const still = newBackgroundPreset({ ...project, spread: 0 }, daisies, 'daisies-2', 9, family)
     expect(still.overrides).toEqual([])

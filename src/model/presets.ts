@@ -1,6 +1,8 @@
 import { PROJECT_FILES } from './projectFiles'
 export { PROJECT_FILES }
-import { projectFromPreset, resolveBackground } from './project'
+import { deriveBackground } from './derive'
+import { getFamily } from './family'
+import { projectFromPreset } from './project'
 import { blobMass, type Preset, type Project } from './types'
 import { describe, validatePreset } from './validate'
 
@@ -32,6 +34,7 @@ export function blankPreset(id: string, name: string): Preset {
     id,
     project: id,
     overrides: [],
+    variation: null,
     shader: 'masses@1',
     canvas: { width: 613, height: 408, dpr: 2 },
     loop: { seconds: 12, fps: 30, stillTime: 6 },
@@ -129,7 +132,7 @@ function resolveAll(presets: Preset[]): { presets: Preset[]; projects: Project[]
       projects.set(project.id, project)
       synthesized.push(project)
     }
-    return resolveBackground(preset, project)
+    return deriveBackground(preset, project, getFamily())
   })
   return { presets: resolved, projects: [...PROJECT_FILES, ...synthesized] }
 }

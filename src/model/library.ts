@@ -187,6 +187,7 @@ export function duplicateCard(id: string): Preset | undefined {
     id: newId,
     project: link.project,
     overrides: [...link.overrides],
+    variation: link.variation,
     seed: newSeed(),
     meta: { ...original.meta, name, project: undefined },
   }

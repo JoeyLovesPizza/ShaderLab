@@ -131,6 +131,20 @@ describe('overlays from earlier builds', () => {
     }
   })
 
+  it('a v8 preset or overlay without variation loads as none, with a warning, not invalid', () => {
+    for (const preset of presets) {
+      const file = clone(preset) as unknown as Obj
+      delete file.variation
+      const result = validatePreset(file)
+      expect(result.ok, `${preset.id} should still validate`).toBe(true)
+      if (!result.ok) continue
+      expect(result.value.variation).toBeNull()
+      expect(result.warnings.map((w) => w.path)).toContain('variation')
+      expect(migrateOverlay(file as never, clone(draftOf(preset))), `${preset.id}: overlay over a v8 file`).not.toBeNull()
+    }
+    expect(validatePreset({ ...clone(presets[0]), variation: 'x' }).ok).toBe(false)
+  })
+
   it('an overlay that cannot be made valid is dropped, not thrown', () => {
     const preset = presets[0]
     expect(migrateOverlay(preset, null)).toBeNull()

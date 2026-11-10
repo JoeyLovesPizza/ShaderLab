@@ -76,11 +76,13 @@ const listeners = new Set<() => void>()
 export interface Link {
   project: string
   overrides: LinkPath[]
+  /** The seed its linked stages derive from, or null (derive.ts). */
+  variation: number | null
 }
-const linkOfPreset = (p: Preset): Link => ({ project: p.project, overrides: [...p.overrides] })
+const linkOfPreset = (p: Preset): Link => ({ project: p.project, overrides: [...p.overrides], variation: p.variation ?? null })
 const links = new Map<string, Link>(PRESETS.map((p) => [p.id, linkOfPreset(p)]))
 const linkBaselines = new Map<string, Link>(PRESETS.map((p) => [p.id, linkOfPreset(p)]))
-const sameLink = (a: Link | undefined, b: Link | undefined) => !!a && !!b && a.project === b.project && a.overrides.join() === b.overrides.join()
+const sameLink = (a: Link | undefined, b: Link | undefined) => !!a && !!b && a.project === b.project && a.variation === b.variation && a.overrides.join() === b.overrides.join()
 
 // Only the bones: an overlay from an older build lacks the keys added
 // since (finish, light, strokes), and the migration fills them in.
@@ -117,10 +119,12 @@ try {
 }
 
 try {
-  const stored = JSON.parse(localStorage.getItem(LINKS_KEY) ?? '{}') as Record<string, unknown>
-  for (const [id, overrides] of Object.entries(stored)) {
+  const stored = JSON.parse(localStorage.getItem(LINKS_KEY) ?? '{}') as Record<string, { overrides?: unknown; variation?: unknown } | undefined>
+  for (const [id, entry] of Object.entries(stored)) {
     const link = links.get(id)
-    if (link) links.set(id, { project: link.project, overrides: cleanOverrides(overrides) })
+    if (!link || !entry || typeof entry !== 'object') continue
+    const variation = typeof entry.variation === 'number' && Number.isFinite(entry.variation) ? entry.variation : null
+    links.set(id, { project: link.project, overrides: cleanOverrides(entry.overrides), variation })
   }
 } catch {
   // Storage blocked or garbage: the files' links stand.
@@ -150,8 +154,10 @@ function persist() {
   }
   const dirtyOut: Record<string, string[]> = {}
   for (const [id, paths] of dirty) if (paths.size) dirtyOut[id] = [...paths]
-  const linksOut: Record<string, LinkPath[]> = {}
-  for (const [id, link] of links) if (!sameLink(link, linkBaselines.get(id))) linksOut[id] = link.overrides
+  const linksOut: Record<string, { overrides: LinkPath[]; variation: number | null }> = {}
+  for (const [id, link] of links) {
+    if (!sameLink(link, linkBaselines.get(id))) linksOut[id] = { overrides: link.overrides, variation: link.variation }
+  }
   try {
     localStorage.setItem(LINKS_KEY, JSON.stringify(linksOut))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(overlays))
@@ -277,10 +283,11 @@ export function setDraft(id: string, draft: CardDraft) {
   notify()
 }
 
-/** A draft that follows from the project, not from an edit: no override is marked. */
-export function replaceDraft(id: string, draft: CardDraft, overrides?: LinkPath[]) {
+/** A draft that follows from the project, not from an edit: no override is
+    marked. `patch` moves the link with it (a relink, a new variation). */
+export function replaceDraft(id: string, draft: CardDraft, patch: Partial<Pick<Link, 'overrides' | 'variation'>> = {}) {
   const link = links.get(id)
-  if (overrides && link) links.set(id, { ...link, overrides })
+  if (link) links.set(id, { ...link, ...patch })
   drafts.set(id, draft)
   persist()
   notify()
@@ -288,7 +295,7 @@ export function replaceDraft(id: string, draft: CardDraft, overrides?: LinkPath[
 
 /** The card's project and overrides now (the baseline's, until an edit). */
 export function getLink(id: string): Link {
-  return links.get(id) ?? { project: id, overrides: [] }
+  return links.get(id) ?? { project: id, overrides: [], variation: null }
 }
 
 /** The cards that follow a project. */
@@ -309,7 +316,7 @@ export function revertToFile(id: string) {
   if (!base) return
   drafts.set(id, structuredClone(base))
   const linkBase = linkBaselines.get(id)
-  if (linkBase) links.set(id, { project: linkBase.project, overrides: [...linkBase.overrides] })
+  if (linkBase) links.set(id, { ...linkBase, overrides: [...linkBase.overrides] })
   dirty.delete(id)
   persist()
   notify()
@@ -320,7 +327,7 @@ export function markSaved(id: string, draft: CardDraft) {
   baselines.set(id, structuredClone(draft))
   drafts.set(id, structuredClone(draft))
   const link = links.get(id)
-  if (link) linkBaselines.set(id, { project: link.project, overrides: [...link.overrides] })
+  if (link) linkBaselines.set(id, { ...link, overrides: [...link.overrides] })
   persist()
   notify()
 }

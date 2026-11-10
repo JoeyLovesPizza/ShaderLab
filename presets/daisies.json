@@ -264,5 +264,6 @@
   },
   "texture": {
     "grain": 0.0628
-  }
+  },
+  "variation": null
 }

@@ -1,4 +1,5 @@
-import { followStyle, overridesAfterEdit, styleOf } from './project'
+import { shuffleVariation } from './derive'
+import { followStyle, styleOf } from './project'
 import { mulberry32, rollScoped } from './shuffle'
 import { blobMass, type CardDraft, type Family, type Preset, type Project, type ProjectStyle } from './types'
 
@@ -40,26 +41,22 @@ export function familyTemplate(blank: Preset, family: Family, hue: number, seed:
 
 /**
  * A new background in `project`: `base` (any background of it, for the
- * parts a style does not carry) with the project's style, a new seed and
- * one shuffle from the style at the project's spread. Locks are cleared so
- * the whole look rolls; whatever then differs from the style is an
- * override, as after any edit. Not the primary.
+ * parts a style does not carry) with a new variation seed, its linked
+ * stages derived from the style at the project's spread (derive.ts).
+ * Nothing is overridden, so it follows the project from the start. Not
+ * the primary.
  */
 export function newBackgroundPreset(project: Project, base: Preset, id: string, seed: number, family: Family): Preset {
-  const start: Preset = followStyle(structuredClone(base), [], project.style)
-  start.base.locked = false
-  for (const m of start.masses) m.locked = false
-  const rolled = rollScoped(project.style, start, family, seed, 'all', { spread: project.spread })
-  const preset: Preset = {
-    ...start,
-    ...rolled,
+  const start: Preset = {
+    ...followStyle(structuredClone(base), [], project.style),
     id,
     project: project.id,
     overrides: [],
+    variation: seed,
     photo: null,
     meta: { ...base.meta, name: `${project.name} ${id.slice(project.id.length + 1)}`, project: undefined },
   }
-  return { ...preset, overrides: overridesAfterEdit(project.style, preset, []) }
+  return shuffleVariation(start, [], seed, project, family)
 }
 
 /**

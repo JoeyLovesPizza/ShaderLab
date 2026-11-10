@@ -112,6 +112,11 @@ function withDefaults(input: Obj, warnings: Issues): Obj {
     out.project = out.id
   }
   out.overrides = cleanOverrides(out.overrides, warnings)
+  // Variation seeds arrived 2026-11-10: a background without one equals its project.
+  if (out.variation === undefined) {
+    warnings.add('variation', 'missing; read as none (linked stages equal the project style)')
+    out.variation = null
+  }
   if (isObj(out.modes)) {
     const m = out.modes
     if (typeof m.structure === 'string' && !STRUCTURE_MODES.includes(m.structure as never)) {
@@ -305,6 +310,7 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
   if (typeof input.project !== 'string' || !input.project) issues.add('project', 'must be a non-empty string (the project id)')
 
   issues.num(input, 'seed', '', 0)
+  if (input.variation !== null && !(isNum(input.variation) && input.variation >= 0)) issues.add('variation', 'must be null or a seed (a number from 0)')
 
   if (!isObj(input.modes)) issues.add('modes', 'must be { colour, bold, coverage, structure }')
   else {
@@ -450,6 +456,7 @@ const PROJECT_SCAFFOLD = {
   id: 'project',
   project: 'project',
   overrides: [],
+  variation: null,
   shader: 'masses@1',
   canvas: { width: 613, height: 408, dpr: 2 },
   loop: { seconds: 12, fps: 30, stillTime: 6 },

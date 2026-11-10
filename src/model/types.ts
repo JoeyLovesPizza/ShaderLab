@@ -248,6 +248,9 @@ export interface Preset {
   /** The stage paths this background has taken for itself; every other
       LinkPath follows the project's style. */
   overrides: LinkPath[]
+  /** Null: the linked stages equal the project's style. A seed: they are one
+      shuffle of the style at that seed and the project's spread (derive.ts). */
+  variation: number | null
   shader: `${string}@${number}`
   canvas: PresetCanvas
   loop: PresetLoop

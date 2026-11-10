@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react'
 import { rerollStyle } from './background'
-import { cardsInProject, getDirty, getDraft, getLink, replaceDraft, setDraft } from './cards'
-import { getFamily } from './family'
+import { cardsInProject, clearDirty, getDirty, getDraft, getLink, replaceDraft, setDraft } from './cards'
+import { deriveLinked, shuffleVariation } from './derive'
+import { getFamily, subscribeFamily } from './family'
 import { PROJECTS, PROJECT_FILES, blankPreset, onPresetFiles } from './presets'
-import { followStyle, overridesAfterEdit, projectFromPreset, relinkDraft } from './project'
+import { overridesAfterEdit, projectFromPreset } from './project'
 import { newSeed, rollScoped } from './shuffle'
 import { stableStringify } from './stable'
 import { DEFAULT_SPREAD, type LinkPath, type Preset, type Project, type ProjectStyle } from './types'
@@ -79,27 +80,56 @@ export function subscribeProjects(listener: () => void) {
 }
 
 /**
- * A project's style edited: every background where a path is linked takes
- * the new value; overridden paths stay as they are. Not an edit of those
- * backgrounds, so nothing is marked overridden.
+ * A card's linked stages derived again from its project (derive.ts): the
+ * style, spread and house pull may have moved, its variation and its own
+ * stages have not. Not an edit, so nothing becomes an override; and the
+ * draft is only replaced when a value really changed, so a card that
+ * still equals its file is not marked modified.
+ */
+function rederive(cardId: string, project: Project | undefined = projects.get(getLink(cardId).project)) {
+  if (!project) return
+  const link = getLink(cardId)
+  const draft = getDraft(cardId)
+  const next = deriveLinked(draft, link.overrides, link.variation, project, getFamily())
+  if (stableStringify(next) !== stableStringify(draft)) replaceDraft(cardId, next)
+}
+
+/**
+ * A project's style edited: every background re-derives, so each linked
+ * stage follows the new style (at its own variation); overridden stages
+ * stay as they are.
  */
 export function setProjectStyle(id: string, style: ProjectStyle) {
   const project = projects.get(id)
   if (!project) return
-  projects.set(id, { ...project, style: structuredClone(style) })
-  for (const cardId of cardsInProject(id)) {
-    replaceDraft(cardId, followStyle(getDraft(cardId), getLink(cardId).overrides, style))
-  }
+  const next = { ...project, style: structuredClone(style) }
+  projects.set(id, next)
+  for (const cardId of cardsInProject(id)) rederive(cardId, next)
   commit()
 }
 
-/** The project's spread; saves into the project file the way a style edit does. */
+/** The project's spread; its backgrounds re-derive live. Saves into the
+    project file the way a style edit does. */
 export function setProjectSpread(id: string, spread: number) {
   const project = projects.get(id)
   if (!project || project.spread === spread) return
-  projects.set(id, { ...project, spread })
+  const next = { ...project, spread }
+  projects.set(id, next)
+  for (const cardId of cardsInProject(id)) rederive(cardId, next)
   commit()
 }
+
+// House pull and the other ranges the shuffle reads belong to the family,
+// not to a project: when they move, every background in every project
+// derives again. Light, motion and grain animation do not feed the roll.
+const rollInputs = (f: ReturnType<typeof getFamily>) => stableStringify({ ...f, light: null, motion: null, texture: { ...f.texture, animate: null }, meta: null })
+let seenFamily = rollInputs(getFamily())
+subscribeFamily(() => {
+  const now = rollInputs(getFamily())
+  if (now === seenFamily) return
+  seenFamily = now
+  for (const project of projects.values()) for (const cardId of cardsInProject(project.id)) rederive(cardId, project)
+})
 
 /** The background that ships for the project; saves into the project file the way a style edit does. */
 export function setPrimary(id: string, cardId: string) {
@@ -121,22 +151,24 @@ export function useCardSpread(cardId: string): number {
 }
 
 /**
- * A background shuffled from its project: the style is the origin and the
- * project's spread the variety (SPEC.md §4). A card with no project style
- * to hand shuffles from its own values. Changed linked stages become
- * overrides, as any edit does.
+ * A background shuffled from its project: a new variation seed, and its
+ * linked stages derived from the style at the project's spread (SPEC.md
+ * §4). Nothing becomes an override: stages the background already owns
+ * stay as they are and are not rolled. "Shuffle (all fields)"
+ * (`ignoreDirty`) gives the hand edits up too: every stage is linked again
+ * first. A card with no project shuffles from its own values.
  */
 export function shuffleBackground(cardId: string, seed: number, options: { ignoreDirty?: boolean } = {}) {
   const draft = getDraft(cardId)
-  const project = projects.get(getLink(cardId).project)
-  setDraft(
-    cardId,
-    rollScoped(project?.style ?? draft, draft, getFamily(), seed, 'all', {
-      dirty: getDirty(cardId),
-      ignoreDirty: options.ignoreDirty,
-      spread: project?.spread,
-    }),
-  )
+  const link = getLink(cardId)
+  const project = projects.get(link.project)
+  if (!project) {
+    setDraft(cardId, rollScoped(draft, draft, getFamily(), seed, 'all', { dirty: getDirty(cardId), ignoreDirty: options.ignoreDirty }))
+    return
+  }
+  const overrides = options.ignoreDirty ? [] : link.overrides
+  if (options.ignoreDirty) clearDirty(cardId)
+  replaceDraft(cardId, shuffleVariation(draft, overrides, seed, project, getFamily()), { overrides, variation: seed })
 }
 
 /** The origin and spread a scoped roll (a mode changed on the panel) reads. */
@@ -156,16 +188,13 @@ export function shuffleProject(id: string, seed = newSeed()) {
   setProjectStyle(id, rerollStyle(blankPreset(id, project.name), getFamily(), seed))
 }
 
-/** Drops one override on a background and takes the project's value for it again. */
+/** Drops one override on a background: that stage follows the project again. */
 export function relink(cardId: string, path: LinkPath) {
   const link = getLink(cardId)
   const project = projects.get(link.project)
   if (!project) return
-  replaceDraft(
-    cardId,
-    relinkDraft(getDraft(cardId), project, path),
-    link.overrides.filter((p) => p !== path),
-  )
+  const overrides = link.overrides.filter((p) => p !== path)
+  replaceDraft(cardId, deriveLinked(getDraft(cardId), overrides, link.variation, project, getFamily()), { overrides })
 }
 
 /**
