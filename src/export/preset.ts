@@ -2,7 +2,7 @@ import { withMassShape, type CardDraft, type LinkPath, type Preset, type Project
 
 /**
  * The preset as the card now is: the draft (seed, modes, base, masses,
- * texture, depth, caption switch, loop) over the file it started from.
+ * texture, depth, motion, caption switch, loop) over the file it started from.
  * Numbers are rounded so a nudge of a dial is one clean line in a diff.
  * `link` is the card's project and overrides as the store holds them now
  * (cards.ts getLink); without it the preset's own stand.
@@ -44,8 +44,10 @@ export function presetFromCard(
         end: { hue: r(m.ramp.end.hue, 1), value: r(m.ramp.end.value), chroma: r(m.ramp.end.chroma) },
         fieldMix: r(m.ramp.fieldMix),
       },
+      motion: { path: m.motion.path, travel: r(m.motion.travel), angle: r(m.motion.angle, 1), pulse: r(m.motion.pulse), shift: r(m.motion.shift, 1) },
     })),
     texture: { grain: r(draft.texture.grain) },
+    motion: { travel: r(draft.motion.travel), tempo: draft.motion.tempo },
     depth: {
       light: { ...d.light, height: r(d.light.height) },
       curve: { ...d.curve, amount: r(d.curve.amount) },

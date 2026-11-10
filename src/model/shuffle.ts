@@ -1,16 +1,20 @@
 import {
+  CARD_MOTION_DEFAULT,
   COLOUR_MODES,
   DEPTH_ORDER,
   L_MAX,
   L_MIN,
   L_RANGE_MIN,
+  MASS_MOTION_DEFAULT,
   MAX_MASSES,
   STRUCTURE_LAYERS,
   type CardDraft,
   type ColourMode,
   type CoverageMode,
   type Family,
+  type CardMotion,
   type Mass,
+  type MassMotion,
   blobMass,
   type Modes,
   type Range,
@@ -168,6 +172,8 @@ const GOVERNS: Record<RollScope, RegExp> = {
 }
 
 const MASS_FIELDS = ['hue', 'value', 'chroma', 'x', 'y', 'size', 'softness', 'distance'] as const
+const MASS_MOTION_FIELDS = ['path', 'travel', 'angle', 'pulse', 'shift'] as const
+const CARD_MOTION_FIELDS = ['travel', 'tempo'] as const
 const BASE_FIELDS = ['hue', 'value', 'chroma'] as const
 
 /**
@@ -211,7 +217,8 @@ export function rollScoped(
   const countMayChange = scope === 'all' || scope === 'coverage'
   const protectedMass = (i: number) =>
     draft.masses[i]?.locked ||
-    (!options.ignoreDirty && MASS_FIELDS.some((f) => dirty.has(`masses.${i}.${f}`)))
+    (!options.ignoreDirty &&
+      (MASS_FIELDS.some((f) => dirty.has(`masses.${i}.${f}`)) || MASS_MOTION_FIELDS.some((f) => dirty.has(`masses.${i}.motion.${f}`))))
   const masses: Mass[] = []
   const len = countMayChange ? Math.max(draft.masses.length, rolled.masses.length) : draft.masses.length
   for (let i = 0; i < len; i++) {
@@ -230,8 +237,9 @@ export function rollScoped(
       continue
     }
     if (current && next) {
-      const merged = { ...current }
+      const merged = { ...current, motion: { ...MASS_MOTION_DEFAULT, ...current.motion } }
       for (const f of MASS_FIELDS) if (may(`masses.${i}.${f}`)) merged[f] = next[f]
+      for (const f of MASS_MOTION_FIELDS) if (may(`masses.${i}.motion.${f}`)) (merged.motion as unknown as Record<string, unknown>)[f] = next.motion[f]
       masses.push(merged)
     }
   }
@@ -243,6 +251,8 @@ export function rollScoped(
     for (const key of Object.keys(from)) if (may(`depth.${layer}.${key}`)) to[key] = from[key]
   }
   if (may('texture.grain')) result.texture.grain = rolled.texture.grain
+  result.motion = { ...CARD_MOTION_DEFAULT, ...result.motion }
+  for (const f of CARD_MOTION_FIELDS) if (may(`motion.${f}`)) result.motion[f] = rolled.motion[f]
   for (const blur of ['motionBlur', 'layerBlur'] as const) {
     const from = rolled.finish[blur] as unknown as Record<string, unknown>
     const to = result.finish[blur] as unknown as Record<string, unknown>
@@ -342,6 +352,37 @@ function cubic(path: Mass['path'], t: number) {
   return {
     x: a * path.start.x + b * path.control1.x + c * path.control2.x + e * path.end.x,
     y: a * path.start.y + b * path.control1.y + c * path.control2.y + e * path.end.y,
+  }
+}
+
+/** Card motion: travel moved by the spread; tempo re-rolled with probability `spread`. */
+function rollCardMotion(rnd: Rnd, origin: CardMotion, fam: Family, s: number): CardMotion {
+  const travel = vary(rnd, origin.travel, fam.motion.travelRange, s)
+  const tempoDice = rnd()
+  const tempo = intBetween(rnd, fam.motion.tempoRange)
+  return {
+    travel: tidy(r4, travel, origin.travel),
+    tempo: tempoDice < s ? Math.min(4, Math.max(1, tempo)) : origin.tempo,
+  }
+}
+
+/** A mass's motion: the path re-rolled with probability `spread`, the
+    numbers moved from the origin's, the angle turned up to ±180° at 1. */
+function rollMassMotion(rnd: Rnd, origin: MassMotion, fam: Family, s: number): MassMotion {
+  const r = fam.motion.mass
+  const pathDice = rnd()
+  const path = pick(rnd, r.paths.length ? r.paths : [origin.path])
+  const travel = vary(rnd, origin.travel, r.travel, s)
+  const turned = origin.angle + (rnd() * 2 - 1) * 180 * s
+  const pulse = vary(rnd, origin.pulse, r.pulse, s)
+  const shift = vary(rnd, origin.shift, r.shift, s)
+  return {
+    path: pathDice < s ? path : origin.path,
+    travel: tidy(r4, clampTo(travel, [0, 2]), origin.travel),
+    // Kept within ±180 once turned; an unturned angle stays as the style has it.
+    angle: s > 0 ? r1(((((turned + 180) % 360) + 360) % 360) - 180) : origin.angle,
+    pulse: tidy(r4, clampTo(pulse, [0, 0.3]), origin.pulse),
+    shift: tidy(r1, clampTo(shift, [0, 40]), origin.shift),
   }
 }
 
@@ -498,6 +539,18 @@ function shuffleOnce(
     else if (!m.locked) m.hue = distinct[distinct.length - 1]
   }
   next.masses = masses
+
+  // Motion: the card's travel and tempo and each unlocked mass's path,
+  // moved from the origin's by the spread within the house ranges. Its
+  // own stream, so a roll's other stages came out as they did before
+  // motion was rolled.
+  const mrnd = mulberry32((seed ^ 0x5bd1e995) >>> 0)
+  next.motion = rollCardMotion(mrnd, origin.motion ?? CARD_MOTION_DEFAULT, fam, s)
+  masses.forEach((m, i) => {
+    // Every mass draws the same count, so one mass's roll never shifts the next's.
+    const rolled = rollMassMotion(mrnd, origin.masses[i]?.motion ?? MASS_MOTION_DEFAULT, fam, s)
+    if (!m.locked) m.motion = rolled
+  })
 
   // Depth: the structure layer is the one rolled (the origin's own when the
   // mode was kept); the others stay as the origin has them, or are switched

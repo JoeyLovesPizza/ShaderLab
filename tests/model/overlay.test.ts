@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { packUniforms } from '../../src/model/pack'
 import { withMassShape } from '../../src/model/types'
-import { migrateOverlay, validatePreset } from '../../src/model/validate'
-import { clone, draftOf, loadFamily, loadPresets } from '../helpers'
+import { migrateOverlay, validatePreset, validateProject } from '../../src/model/validate'
+import { clone, draftOf, loadFamily, loadPresets, loadProjects } from '../helpers'
 
 /*
  * An overlay saved by an earlier build (localStorage: a card's draft, a
@@ -66,8 +66,16 @@ const SHAPES: Record<string, (draft: Obj) => void> = {
   'with a photo': (d) => {
     d.photo = { src: 'photos/daisies.webp', fidelity: 0.5 }
   },
+  'no card or mass motion (before family version 10)': (d) => {
+    delete d.motion
+    for (const m of d.masses as Obj[]) delete m.motion
+  },
+  'mass motion with only a path': (d) => {
+    for (const m of d.masses as Obj[]) m.motion = { path: 'ellipse' }
+  },
   'everything at once': (d) => {
     delete d.finish
+    delete d.motion
     delete (d.depth as Obj).light
     delete (d.depth as Obj).strokes
     delete (d.depth as Obj).haze
@@ -107,7 +115,10 @@ describe('overlays from earlier builds', () => {
           expect(m.kind === 'blob' || m.kind === 'ridge').toBe(true)
           expect(m.path.control1.x).toBeTypeOf('number')
           expect(m.ramp.fieldMix).toBeTypeOf('number')
+          expect(m.motion.travel).toBeTypeOf('number')
+          expect(m.motion.pulse).toBeTypeOf('number')
         }
+        expect(Number.isInteger(draft.motion.tempo)).toBe(true)
         const u = packUniforms(draft, family)
         for (const [key, value] of Object.entries(u)) finite(value, key)
       }
@@ -143,6 +154,29 @@ describe('overlays from earlier builds', () => {
       expect(migrateOverlay(file as never, clone(draftOf(preset))), `${preset.id}: overlay over a v8 file`).not.toBeNull()
     }
     expect(validatePreset({ ...clone(presets[0]), variation: 'x' }).ok).toBe(false)
+  })
+
+  it('a v9 preset or project without motion loads with the old drift and warnings, not invalid', () => {
+    for (const preset of presets) {
+      const file = clone(preset) as unknown as Obj
+      delete file.motion
+      for (const m of file.masses as Obj[]) delete m.motion
+      const result = validatePreset(file)
+      expect(result.ok, `${preset.id} should still validate`).toBe(true)
+      if (!result.ok) continue
+      expect(result.value.motion).toEqual({ travel: 0.6, tempo: 2 })
+      for (const m of result.value.masses) expect(m.motion).toEqual({ path: 'circle', travel: 1, angle: 0, pulse: 0, shift: 0 })
+      expect(result.warnings.map((w) => w.path)).toEqual(expect.arrayContaining(['motion', 'masses.0.motion']))
+      expect(migrateOverlay(file as never, clone(draftOf(preset))), `${preset.id}: overlay over a v9 file`).not.toBeNull()
+    }
+    for (const project of loadProjects()) {
+      const file = clone(project) as unknown as { style: Obj }
+      delete file.style.motion
+      for (const m of file.style.masses as Obj[]) delete m.motion
+      const result = validateProject(file)
+      expect(result.ok, `${project.id} should still validate`).toBe(true)
+      if (result.ok) expect(result.value.style.motion).toEqual({ travel: 0.6, tempo: 2 })
+    }
   })
 
   it('an overlay that cannot be made valid is dropped, not thrown', () => {

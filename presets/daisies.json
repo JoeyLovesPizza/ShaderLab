@@ -92,6 +92,13 @@
       "hue": 28.7,
       "kind": "blob",
       "locked": false,
+      "motion": {
+        "angle": 0,
+        "path": "circle",
+        "pulse": 0,
+        "shift": 0,
+        "travel": 1
+      },
       "path": {
         "control1": {
           "x": 0.85,
@@ -135,6 +142,13 @@
       "hue": 77.9,
       "kind": "blob",
       "locked": false,
+      "motion": {
+        "angle": 0,
+        "path": "circle",
+        "pulse": 0,
+        "shift": 0,
+        "travel": 1
+      },
       "path": {
         "control1": {
           "x": 0.93,
@@ -178,6 +192,13 @@
       "hue": 267.5,
       "kind": "blob",
       "locked": false,
+      "motion": {
+        "angle": 0,
+        "path": "circle",
+        "pulse": 0,
+        "shift": 0,
+        "travel": 1
+      },
       "path": {
         "control1": {
           "x": 0.58,
@@ -225,6 +246,10 @@
     "colour": "warm-cool",
     "coverage": "block",
     "structure": "relief"
+  },
+  "motion": {
+    "tempo": 2,
+    "travel": 0.6
   },
   "overrides": [],
   "photo": {

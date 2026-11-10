@@ -37,6 +37,11 @@ export const UNIFORMS = {
   u_massLabEnd: { kind: 'array', components: 3, count: MAX_MASSES, default: zeros(3 * MAX_MASSES) },
   /** A ridge's ramp as the field too: mix of the base toward the ramp across the chord. */
   u_massFieldMix: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
+  // Each mass's motion (src/shader/motion.ts): path (0 circle, 1 ellipse,
+  // 2 line, 3 figure eight), travel (× the card's), angle in radians,
+  // pulse; and the hue's sway in radians.
+  u_massMotion: { kind: 'array', components: 4, count: MAX_MASSES, default: Array.from({ length: MAX_MASSES }, () => [0, 1, 0, 0]).flat() },
+  u_massShift: { kind: 'array', components: 1, count: MAX_MASSES, default: zeros(MAX_MASSES) },
   // Depth stack, in order. An amount below zero means the layer is off.
   // Light: the card's height (0..1, or off), and the family's one light.
   u_light: { kind: 'float', default: -1 },
@@ -83,7 +88,9 @@ export const UNIFORMS = {
   u_grainAnimate: { kind: 'float', default: 0 },
   u_captionMask: { kind: 'float', default: 0 },
   u_captionZone: { kind: 'float', default: 0.3 },
+  /** The card's travel as a radius, height units (family drift radius × travel / 0.6). */
   u_driftRadius: { kind: 'float', default: 0.03 },
+  /** The card's tempo: whole revolutions per loop. */
   u_speed: { kind: 'float', default: 1 },
   /** The family's direction, degrees. */
   u_angle: { kind: 'float', default: 20 },

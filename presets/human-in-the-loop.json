@@ -78,6 +78,13 @@
       "hue": 78,
       "kind": "blob",
       "locked": false,
+      "motion": {
+        "angle": 0,
+        "path": "circle",
+        "pulse": 0,
+        "shift": 0,
+        "travel": 1
+      },
       "path": {
         "control1": {
           "x": 1.2,
@@ -121,6 +128,13 @@
       "hue": 50,
       "kind": "blob",
       "locked": false,
+      "motion": {
+        "angle": 0,
+        "path": "circle",
+        "pulse": 0,
+        "shift": 0,
+        "travel": 1
+      },
       "path": {
         "control1": {
           "x": 0.3,
@@ -169,6 +183,10 @@
     "colour": "mono",
     "coverage": "blend",
     "structure": "none"
+  },
+  "motion": {
+    "tempo": 2,
+    "travel": 0.6
   },
   "overrides": [],
   "photo": null,

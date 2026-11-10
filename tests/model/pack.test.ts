@@ -112,12 +112,14 @@ describe('packUniforms', () => {
     }
   })
 
-  it('the motion dial picks whole revolutions per loop', () => {
+  it('card travel and tempo pack to a finite radius and whole revolutions per loop', () => {
     const draft = draftOf(presets[0])
-    for (const amount of [0, 0.3, 0.45, 0.6, 0.85, 1]) {
-      const u = packUniforms(draft, { ...family, motion: { ...family.motion, amount } })
-      expect(Number.isInteger(u.u_speed)).toBe(true)
-      expect(Number.isFinite(u.u_driftRadius)).toBe(true)
+    for (const travel of [0, 0.3, 0.6, 1]) {
+      for (const tempo of [1, 2, 3, 4]) {
+        const u = packUniforms({ ...draft, motion: { travel, tempo } }, family)
+        expect(Number.isInteger(u.u_speed)).toBe(true)
+        expect(Number.isFinite(u.u_driftRadius)).toBe(true)
+      }
     }
   })
 })

@@ -11,11 +11,11 @@ import { DEFAULT_SPREAD, LINK_PATHS, type DepthLayerName, type LinkPath, type Pr
  */
 
 /** Anything with the linkable stages: a preset, a card draft or a style. */
-export type Styled = Pick<ProjectStyle, 'base' | 'masses' | 'texture' | 'modes' | 'depth'>
+export type Styled = Pick<ProjectStyle, 'base' | 'masses' | 'texture' | 'modes' | 'motion' | 'depth'>
 
 export function valueAt(source: Styled, path: LinkPath): unknown {
   if (path.startsWith('depth.')) return source.depth[path.slice(6) as DepthLayerName]
-  return source[path as 'base' | 'masses' | 'texture' | 'modes']
+  return source[path as 'base' | 'masses' | 'texture' | 'modes' | 'motion']
 }
 
 function assign(target: Styled, path: LinkPath, value: unknown) {
@@ -26,7 +26,7 @@ function assign(target: Styled, path: LinkPath, value: unknown) {
 
 /** The linkable stages of a preset or draft, deep-copied. */
 export function styleOf(source: Styled): ProjectStyle {
-  return structuredClone({ base: source.base, masses: source.masses, texture: source.texture, modes: source.modes, depth: source.depth })
+  return structuredClone({ base: source.base, masses: source.masses, texture: source.texture, modes: source.modes, motion: source.motion, depth: source.depth })
 }
 
 /** The project a background stands for on its own: its current stages are

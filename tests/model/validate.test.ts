@@ -154,20 +154,36 @@ describe('rules', () => {
     expect(validatePreset(raw).ok).toBe(false)
   })
 
-  it('family: a non-integer speed and a missing finish fail', () => {
+  it('family: a non-integer tempo and a missing finish fail', () => {
     const fam = clone(familyJson()) as Obj
-    fam.motion.speed = 1.5
+    fam.motion.tempo = 1.5
     expect(validateFamily(fam).ok).toBe(false)
     const noFinish = clone(familyJson()) as Obj
     delete noFinish.finish
     expect(validateFamily(noFinish).ok).toBe(false)
   })
 
-  it('family: a missing motion.amount defaults to 0.6', () => {
+  it('family: a v9 motion block (amount, speed, driftRange) becomes the house default and ranges', () => {
     const fam = clone(familyJson()) as Obj
-    delete fam.motion.amount
+    fam.motion = { amount: 0.6, angle: 20, driftRadius: 0.1, driftRange: [0.03, 0.2], speed: 2 }
     const result = validateFamily(fam)
     expect(result.ok).toBe(true)
-    if (result.ok) expect(result.value.motion.amount).toBe(0.6)
+    if (!result.ok) return
+    expect(result.value.motion.travel).toBe(0.6)
+    expect(result.value.motion.tempo).toBe(2)
+    expect(result.value.motion.mass.paths).toEqual(['circle', 'ellipse', 'line', 'figure8'])
+    expect((result.value.motion as unknown as Obj).amount).toBeUndefined()
+  })
+
+  it('a card tempo that is not whole, or a mass path that does not exist, fails', () => {
+    const raw = good()
+    raw.motion = { travel: 0.6, tempo: 2.5 }
+    expect(validatePreset(raw).ok).toBe(false)
+    const bad = good()
+    bad.masses[0].motion = { path: 'spiral', travel: 1, angle: 0, pulse: 0, shift: 0 }
+    expect(validatePreset(bad).ok).toBe(false)
+    const far = good()
+    far.masses[0].motion = { path: 'line', travel: 1, angle: 0, pulse: 0.5, shift: 0 }
+    expect(validatePreset(far).ok).toBe(false)
   })
 })

@@ -30,6 +30,40 @@ export interface Point {
 }
 
 /**
+ * How one mass moves over the loop (SPEC.md §4, "Motion per project and
+ * per mass"). `path` is the shape it travels; `travel` scales the card's
+ * travel (0..2); `angle` (degrees) orients the ellipse, line and figure
+ * eight; `pulse` (0..0.3) swells and shrinks its size by that fraction;
+ * `shift` (0..40 degrees) sways its hue that far either side. Every term
+ * runs at whole cycles per loop (src/shader/motion.ts), so the loop joins.
+ */
+export const MASS_PATHS = ['circle', 'ellipse', 'line', 'figure8'] as const
+export type MassPath = (typeof MASS_PATHS)[number]
+
+export interface MassMotion {
+  path: MassPath
+  travel: number
+  angle: number
+  pulse: number
+  shift: number
+}
+
+/** Today's drift: a circle at the card's travel, no pulse, no hue sway. */
+export const MASS_MOTION_DEFAULT: MassMotion = { path: 'circle', travel: 1, angle: 0, pulse: 0, shift: 0 }
+
+/**
+ * The card's motion stage, a LinkPath: `travel` 0..1 is how far masses
+ * move (0.6 is the drift every card had before), `tempo` whole
+ * revolutions per loop, 1–4 (2 before).
+ */
+export interface CardMotion {
+  travel: number
+  tempo: number
+}
+
+export const CARD_MOTION_DEFAULT: CardMotion = { travel: 0.6, tempo: 2 }
+
+/**
  * A soft mass of colour or shadow, lighter or darker than the base. A
  * `blob` falls off from `x, y`; a `ridge` falls off from a cubic Bézier
  * (`path.start`, `control1`, `control2`, `end`), so its crest can
@@ -55,15 +89,18 @@ export interface Mass extends MassColour {
   /** Ridge only: the colours at t 0 and t 1, and how far the ramp also
       fills the field across the start→end chord (0: the crest alone). */
   ramp: { start: MassColour; end: MassColour; fieldMix: number }
+  motion: MassMotion
 }
 
 export const MASS_KINDS = ['blob', 'ridge'] as const
 
-/** A blob from its own fields, with the ridge fields parked around it. */
-export function blobMass(m: Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
+/** A blob from its own fields, with the ridge fields parked around it
+    and today's motion unless it brings its own. */
+export function blobMass(m: Omit<Mass, 'kind' | 'path' | 'ramp' | 'motion'> & { motion?: MassMotion }): Mass {
   const colour = { hue: m.hue, value: m.value, chroma: m.chroma }
   return {
     ...m,
+    motion: { ...MASS_MOTION_DEFAULT, ...m.motion },
     kind: 'blob',
     path: { start: { x: m.x - 0.4, y: m.y - 0.2 }, control1: { x: m.x, y: m.y }, control2: { x: m.x, y: m.y }, end: { x: m.x + 0.4, y: m.y + 0.2 } },
     ramp: { start: { ...colour }, end: { ...colour }, fieldMix: 0 },
@@ -76,7 +113,7 @@ export function blobMass(m: Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
  * gets the blob defaults for what it lacks. Belt and braces under the
  * validator, which migrates every overlay on load.
  */
-export function withMassShape(m: Partial<Mass> & Omit<Mass, 'kind' | 'path' | 'ramp'>): Mass {
+export function withMassShape(m: Partial<Mass> & Omit<Mass, 'kind' | 'path' | 'ramp' | 'motion'>): Mass {
   const blob = blobMass(m)
   const path = m.path ?? blob.path
   const ramp = m.ramp ?? blob.ramp
@@ -90,6 +127,7 @@ export function withMassShape(m: Partial<Mass> & Omit<Mass, 'kind' | 'path' | 'r
       end: path.end ?? blob.path.end,
     },
     ramp: { start: ramp.start ?? blob.ramp.start, end: ramp.end ?? blob.ramp.end, fieldMix: ramp.fieldMix ?? 0 },
+    motion: { ...MASS_MOTION_DEFAULT, ...m.motion },
   }
 }
 
@@ -128,7 +166,7 @@ export interface StrokesLayer extends DepthLayer {
   chaos: number
   follow: number
   /** How much the fibres drift, sway and breathe over the loop, 0..1;
-      scaled by the family's Motion dial. */
+      scaled by the card's travel about 0.6. */
   motion: number
 }
 
@@ -263,6 +301,8 @@ export interface Preset {
   masses: Mass[]
   texture: { grain: number }
   depth: Depth
+  /** How far and how fast the masses move; each mass shapes its own path. */
+  motion: CardMotion
   finish: Finish
   captionMask: boolean
   image: PresetImage | null
@@ -274,7 +314,7 @@ export interface Preset {
 /** The part of a preset the panel and the shuffle edit. */
 export type CardDraft = Pick<
   Preset,
-  'seed' | 'modes' | 'base' | 'masses' | 'texture' | 'depth' | 'finish' | 'captionMask' | 'loop' | 'photo'
+  'seed' | 'modes' | 'base' | 'masses' | 'texture' | 'depth' | 'motion' | 'finish' | 'captionMask' | 'loop' | 'photo'
 >
 
 /**
@@ -283,14 +323,15 @@ export type CardDraft = Pick<
  * is a whole stage: base, masses, texture, modes, and each depth layer.
  */
 export type DepthLinkPath = `depth.${DepthLayerName}`
-export type LinkPath = 'base' | 'masses' | 'texture' | 'modes' | DepthLinkPath
-export const LINK_PATHS: LinkPath[] = ['base', 'masses', 'texture', 'modes', ...DEPTH_ORDER.map((name): DepthLinkPath => `depth.${name}`)]
+export type LinkPath = 'base' | 'masses' | 'texture' | 'modes' | 'motion' | DepthLinkPath
+export const LINK_PATHS: LinkPath[] = ['base', 'masses', 'texture', 'modes', 'motion', ...DEPTH_ORDER.map((name): DepthLinkPath => `depth.${name}`)]
 
 export interface ProjectStyle {
   base: BaseColor
   masses: Mass[]
   texture: { grain: number }
   modes: Modes
+  motion: CardMotion
   depth: Depth
 }
 
@@ -349,16 +390,23 @@ export interface Family {
     /** Static grain hashes on the seed; animated grain on every other frame. */
     animate: boolean
   }
+  /**
+   * The house's motion: what a new card starts from and the ranges the
+   * shuffle rolls a card's and each mass's motion in (SPEC.md §4, "Motion
+   * per project and per mass"). A card's own `motion` stage is the truth
+   * for how it moves.
+   */
   motion: {
-    /** Radius of each mass's drift circle, card widths, at Motion 0.6. */
+    /** Radius of a mass's path, card widths, at card travel 0.6 and mass travel 1. */
     driftRadius: number
-    driftRange: Range
-    /** Revolutions per loop, an integer, so the loop stays seamless. The
-        Motion dial overrides it: 1 below 0.45, 2 to 0.85, 3 above. */
-    speed: number
-    /** The one knob, 0..1 (default 0.6): scales the drift radius and
-        picks the revolutions per loop together. */
-    amount: number
+    /** The house default for a new card. */
+    travel: number
+    tempo: number
+    travelRange: Range
+    /** Whole revolutions per loop, integers inclusive. */
+    tempoRange: Range
+    /** Ranges for each mass's motion; `paths` the shapes a roll may pick. */
+    mass: { paths: MassPath[]; travel: Range; pulse: Range; shift: Range }
     /** The family's direction in degrees: the pleats run along it, and a
         motion blur that follows the family blurs along it. */
     angle: number

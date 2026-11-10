@@ -27,9 +27,9 @@ function movedStyle(style: ProjectStyle): ProjectStyle {
 }
 
 describe('LINK_PATHS', () => {
-  it('lists the four stages and every depth layer', () => {
-    expect(LINK_PATHS).toEqual(expect.arrayContaining(['base', 'masses', 'texture', 'modes', 'depth.light', 'depth.shadow', 'depth.strokes']))
-    expect(LINK_PATHS).toHaveLength(12)
+  it('lists the five stages and every depth layer', () => {
+    expect(LINK_PATHS).toEqual(expect.arrayContaining(['base', 'masses', 'texture', 'modes', 'motion', 'depth.light', 'depth.shadow', 'depth.strokes']))
+    expect(LINK_PATHS).toHaveLength(13)
   })
 })
 

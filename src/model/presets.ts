@@ -3,7 +3,7 @@ export { PROJECT_FILES }
 import { deriveBackground } from './derive'
 import { getFamily } from './family'
 import { projectFromPreset } from './project'
-import { blobMass, type Preset, type Project } from './types'
+import { CARD_MOTION_DEFAULT, blobMass, type Preset, type Project } from './types'
 import { describe, validatePreset } from './validate'
 
 /*
@@ -55,6 +55,7 @@ export function blankPreset(id: string, name: string): Preset {
       strokes: { on: false, amount: 0.018, direction: 20, followAngle: true, size: 0.35, density: 14, taper: 0.25, chaos: 0, follow: 0.3, motion: 0.5 },
       shadow: { on: false, amount: 0, rect: [0, 0, 1, 1], offset: 0, spread: 0 },
     },
+    motion: { ...CARD_MOTION_DEFAULT },
     finish: {
       motionBlur: { on: false, angle: 20, followAngle: true, length: 0.1, intensity: 0.6 },
       layerBlur: { on: false, radius: 0.04, intensity: 0.6 },

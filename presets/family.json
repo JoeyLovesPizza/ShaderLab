@@ -137,17 +137,41 @@
   "meta": {
     "created": "2026-10-28",
     "name": "masses@1 family (Critic defaults, SPEC.md \u00a74, 2026-10-28; Light and Strokes 2026-11-02)",
-    "version": 9
+    "version": 10
   },
   "motion": {
-    "amount": 0.6,
     "angle": 20,
     "driftRadius": 0.1,
-    "driftRange": [
-      0.03,
-      0.2
+    "mass": {
+      "paths": [
+        "circle",
+        "ellipse",
+        "line",
+        "figure8"
+      ],
+      "pulse": [
+        0,
+        0.15
+      ],
+      "shift": [
+        0,
+        18
+      ],
+      "travel": [
+        0.6,
+        1.5
+      ]
+    },
+    "tempo": 2,
+    "tempoRange": [
+      1,
+      3
     ],
-    "speed": 2
+    "travel": 0.6,
+    "travelRange": [
+      0.35,
+      0.85
+    ]
   },
   "schema": 2,
   "shader": "masses@1",

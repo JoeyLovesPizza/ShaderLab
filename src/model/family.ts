@@ -7,8 +7,9 @@ import { describe, validateFamily } from './validate'
  * The family as one small store: what every card shares and the bounds
  * the shuffle respects (SPEC.md §2). presets/masses/family.json is the
  * source of truth and is validated on load; a broken file never stops the
- * page, the built-in family stands in and the error is shown. The Motion
- * folder edits speed in the in-memory copy. Not persisted.
+ * page, the built-in family stands in and the error is shown. The panel
+ * edits House pull, grain animation and the light in the in-memory copy.
+ * Not persisted.
  */
 
 export const DEFAULT_FAMILY: Family = {
@@ -28,7 +29,15 @@ export const DEFAULT_FAMILY: Family = {
     boldAllowed: true,
   },
   texture: { grain: 0.06, range: [0.04, 0.08], animate: false },
-  motion: { driftRadius: 0.1, driftRange: [0.03, 0.2], speed: 2, amount: 0.6, angle: 20 },
+  motion: {
+    driftRadius: 0.1,
+    travel: 0.6,
+    tempo: 2,
+    travelRange: [0.35, 0.85],
+    tempoRange: [1, 3],
+    mass: { paths: ['circle', 'ellipse', 'line', 'figure8'], travel: [0.6, 1.5], pulse: [0, 0.15], shift: [0, 18] },
+    angle: 20,
+  },
   finish: {
     motionBlur: { allowed: true, length: [0.05, 0.2], intensity: [0.4, 0.8] },
     layerBlur: { allowed: true, radius: [0.02, 0.08], intensity: [0.4, 0.8] },
@@ -45,7 +54,7 @@ export const DEFAULT_FAMILY: Family = {
     strokes: { on: false, allowed: true, amount: [0.01, 0.03], size: 0.35, density: 14 },
     shadow: { on: false, allowed: false, amount: [0.3, 0.7] },
   },
-  meta: { name: 'built-in fallback', created: '2026-10-28', version: 9 },
+  meta: { name: 'built-in fallback', created: '2026-10-28', version: 10 },
 }
 
 /** The load error, when family.json failed and the fallback is in use. */

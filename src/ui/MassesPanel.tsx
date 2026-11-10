@@ -33,6 +33,8 @@ import {
   type LinkPath,
   type Mass,
   MASS_KINDS,
+  MASS_MOTION_DEFAULT,
+  MASS_PATHS,
   blobMass,
   withMassShape,
   type Modes,
@@ -44,7 +46,8 @@ import { labToOklch, oklchToHex, parseColor, srgbToOklab } from '../palette/ramp
 
 /*
  * The card's DialKit panel (SPEC.md §2, the five stages): Base, Masses,
- * Texture, Depth, Motion, in that order, with the seed, the three rolled
+ * Texture, Depth, Motion, in that order (Motion is the card's travel,
+ * tempo and loop; each mass folder has its own Motion), with the seed, the three rolled
  * modes, the project's Spread and the family's House pull at the top.
  *
  * Colour is picked as one colour (Joe: "I cannot pick colours" with
@@ -153,6 +156,15 @@ function massConfig(raw: Mass, _family: Family) {
     colorStart: oklchToHex(mass.ramp.start.hue, mass.ramp.start.value, mass.ramp.start.chroma),
     colorEnd: oklchToHex(mass.ramp.end.hue, mass.ramp.end.value, mass.ramp.end.chroma),
     fieldMix: slider(mass.ramp.fieldMix, 0, 1, 0.01),
+    // How this mass moves over the loop (SPEC.md §4): its path, its travel
+    // on the card's, the path's direction, the size's swell, the hue's sway.
+    motion: {
+      path: select(MASS_PATHS, mass.motion.path),
+      travel: slider(mass.motion.travel, 0, 2, 0.01),
+      angle: slider(mass.motion.angle, -180, 180, 1),
+      pulse: slider(mass.motion.pulse, 0, 0.3, 0.005),
+      shift: slider(mass.motion.shift, 0, 40, 0.5),
+    },
   }
 }
 
@@ -256,10 +268,12 @@ function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: 
       elevation: slider(family.light.elevation, 5, 90, 1),
       amount: slider(family.light.amount, 0, 0.5, 0.01),
     },
+    // The card's motion stage (linked to the project like any other) and
+    // the loop it runs in; each mass shapes its own path in its folder.
     motion: {
-      // One knob for how much everything moves (family-wide).
-      motion: slider(family.motion.amount, 0, 1, 0.01),
-      loopSeconds: slider(draft.loop.seconds, 2, 60, 0.5),
+      travel: slider(draft.motion.travel, 0, 1, 0.01),
+      tempo: slider(draft.motion.tempo, 1, 4, 1),
+      loopSeconds: slider(draft.loop.seconds, 8, 24, 0.5),
       playing: !reduced,
       state: select(STATES, 'idle'),
       // Exclusive of the loop length itself, which wraps to 0.
@@ -268,7 +282,9 @@ function panelConfig(draft: CardDraft, family: Family, spread: number, loopMax: 
   } as Record<string, unknown>
   if (scope === 'Project') {
     // What belongs to a background alone, and the family's own dials.
-    for (const key of ['seed', 'revertToFile', 'saveToFile', 'makePrimary', 'followsProject', 'finish', 'photo', 'light', 'motion']) delete config[key]
+    for (const key of ['seed', 'revertToFile', 'saveToFile', 'makePrimary', 'followsProject', 'finish', 'photo', 'light']) delete config[key]
+    // The style carries travel and tempo; the loop and the transport are a background's.
+    for (const key of ['loopSeconds', 'playing', 'state', 'scrub']) delete (config.motion as Values)[key]
     delete (config.texture as Values).animate
     delete (config.depth as Values).captionMask
   }
@@ -306,6 +322,8 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
     const offset = num(m, 'value', 0)
     const colour = (key: string, was: { hue: number; value: number; chroma: number }) =>
       colourToOklch(typeof m[key] === 'string' ? (m[key] as string) : oklchToHex(was.hue, was.value, was.chroma), offset, was)
+    const mo = folder(m, 'motion')
+    const wasMotion = { ...MASS_MOTION_DEFAULT, ...was.motion }
     masses.push({
       kind: MASS_KINDS.includes(m.kind as never) ? (m.kind as Mass['kind']) : was.kind,
       ...colour('color', was),
@@ -322,6 +340,13 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
         end: point('end', was.path.end),
       },
       ramp: { start: colour('colorStart', was.ramp.start), end: colour('colorEnd', was.ramp.end), fieldMix: num(m, 'fieldMix', was.ramp.fieldMix) },
+      motion: {
+        path: MASS_PATHS.includes(mo.path as never) ? (mo.path as Mass['motion']['path']) : wasMotion.path,
+        travel: num(mo, 'travel', wasMotion.travel),
+        angle: num(mo, 'angle', wasMotion.angle),
+        pulse: num(mo, 'pulse', wasMotion.pulse),
+        shift: num(mo, 'shift', wasMotion.shift),
+      },
     })
   }
   const shadow = layer('shadow')
@@ -404,6 +429,8 @@ function draftFromValues(v: Values, current: CardDraft): CardDraft {
         intensity: num(lb, 'intensity', current.finish.layerBlur.intensity),
       },
     },
+    // Tempo is whole revolutions per loop, or the loop would not join.
+    motion: { travel: num(motion, 'travel', current.motion.travel), tempo: Math.round(num(motion, 'tempo', current.motion.tempo)) },
     captionMask: bool(depth, 'captionMask', current.captionMask),
     loop: { ...current.loop, seconds: num(motion, 'loopSeconds', current.loop.seconds) },
     // The file itself is set by a drop or an upload (handled outside the
@@ -435,6 +462,7 @@ function valuesFromDraft(draft: CardDraft): Values {
       colorStart: oklchToHex(m.ramp.start.hue, m.ramp.start.value, m.ramp.start.chroma),
       colorEnd: oklchToHex(m.ramp.end.hue, m.ramp.end.value, m.ramp.end.chroma),
       fieldMix: m.ramp.fieldMix,
+      motion: { ...m.motion },
     }
   })
   const d = draft.depth
@@ -475,7 +503,7 @@ function valuesFromDraft(draft: CardDraft): Values {
       },
       layerBlur: { ...draft.finish.layerBlur },
     },
-    motion: { loopSeconds: draft.loop.seconds },
+    motion: { travel: draft.motion.travel, tempo: draft.motion.tempo, loopSeconds: draft.loop.seconds },
     photo: { file: draft.photo?.src ?? '', fidelity: draft.photo?.fidelity ?? 0.5 },
   }
 }
@@ -687,11 +715,10 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
     if (seen.panel !== panelSpread && panelSpread !== storeSpread) setProjectSpread(getLink(preset.id).project, panelSpread)
   }, [dial, preset.id, storeSpread, panelSpread])
 
-  // --- Family dials: house pull, grain animation, motion ---------------------------
+  // --- Family dials: house pull, grain animation, the light ---------------------------
   const housePull = v.housePull as number
   // Project scope has no family folders for these; the family's own value stands.
   const grainAnimate = bool(folder(v, 'texture'), 'animate', family.texture.animate)
-  const motionAmount = num(folder(v, 'motion'), 'motion', family.motion.amount)
   const lightV = folder(v, 'light')
   const lightKey = stableStringify(lightV)
   useEffect(() => {
@@ -705,7 +732,6 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
     if (
       f.housePull === housePull &&
       f.texture.animate === grainAnimate &&
-      f.motion.amount === motionAmount &&
       stableStringify(f.light) === stableStringify(light)
     ) {
       return
@@ -714,12 +740,11 @@ export function MassesPanel({ preset, handle, reduced, isStatic, onNewBackground
       ...fam,
       housePull,
       texture: { ...fam.texture, animate: grainAnimate },
-      motion: { ...fam.motion, amount: motionAmount },
       light,
     }))
     // lightKey stands in for the light folder's values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [housePull, grainAnimate, motionAmount, lightKey])
+  }, [housePull, grainAnimate, lightKey])
 
   // --- Transport and states, only with a live card ------------------------------
   const motion = folder(v, 'motion')

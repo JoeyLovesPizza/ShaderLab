@@ -1,4 +1,5 @@
 import {
+  CARD_MOTION_DEFAULT,
   COLOUR_MODES,
   COVERAGE_MODES,
   DEPTH_ORDER,
@@ -7,6 +8,8 @@ import {
   L_MIN,
   LINK_PATHS,
   MASS_KINDS,
+  MASS_MOTION_DEFAULT,
+  MASS_PATHS,
   MAX_MASSES,
   STRUCTURE_LAYERS,
   STRUCTURE_MODES,
@@ -117,6 +120,13 @@ function withDefaults(input: Obj, warnings: Issues): Obj {
     warnings.add('variation', 'missing; read as none (linked stages equal the project style)')
     out.variation = null
   }
+  // Card motion arrived 2026-11-10 (family version 10): before it every
+  // card moved by the family's one Motion dial, 0.6 in every family file,
+  // which is travel 0.6 at two revolutions a loop.
+  if (out.motion === undefined) {
+    warnings.add('motion', `missing; read as travel ${CARD_MOTION_DEFAULT.travel}, tempo ${CARD_MOTION_DEFAULT.tempo} (the old family motion)`)
+    out.motion = { ...CARD_MOTION_DEFAULT }
+  } else if (isObj(out.motion)) out.motion = { ...CARD_MOTION_DEFAULT, ...out.motion }
   if (isObj(out.modes)) {
     const m = out.modes
     if (typeof m.structure === 'string' && !STRUCTURE_MODES.includes(m.structure as never)) {
@@ -227,7 +237,7 @@ function checkPoint(issues: Issues, value: unknown, path: string) {
  * a blob, and a blob's unused path and ramp are filled so every mass has
  * the one shape (the panel shows them for the Kind switch).
  */
-function withMassDefaults(value: Obj): Obj {
+function withMassDefaults(value: Obj, at: string, warnings: Issues): Obj {
   const kind = value.kind === 'ridge' ? 'ridge' : 'blob'
   const x = isNum(value.x) ? value.x : 0
   const y = isNum(value.y) ? value.y : 0
@@ -246,7 +256,27 @@ function withMassDefaults(value: Obj): Obj {
       end: path.end ?? { x: x + 0.4, y: y + 0.2 },
     },
     ramp: { start: ramp.start ?? { ...colour }, end: ramp.end ?? { ...colour }, fieldMix: ramp.fieldMix ?? 0 },
+    // Mass motion arrived 2026-11-10: a mass without it drifts on today's circle.
+    motion: motionWithDefaults(value.motion, at, warnings),
   }
+}
+
+function motionWithDefaults(value: unknown, path: string, warnings: Issues): unknown {
+  if (value === undefined) {
+    warnings.add(`${path}.motion`, 'missing; read as a circle at the card\'s travel (the old drift)')
+    return { ...MASS_MOTION_DEFAULT }
+  }
+  return isObj(value) ? { ...MASS_MOTION_DEFAULT, ...value } : value
+}
+
+function checkCardMotion(issues: Issues, value: unknown, path: string) {
+  if (!isObj(value)) {
+    issues.add(path, 'must be { travel, tempo }')
+    return
+  }
+  issues.num(value, 'travel', path, 0, 1)
+  issues.num(value, 'tempo', path, 1, 4)
+  if (isNum(value.tempo) && !Number.isInteger(value.tempo)) issues.add(`${path}.tempo`, 'must be a whole number of revolutions per loop, or the loop will not join')
 }
 
 function checkMass(issues: Issues, value: unknown, path: string): value is Mass {
@@ -271,6 +301,15 @@ function checkMass(issues: Issues, value: unknown, path: string): value is Mass 
     checkColour(issues, value.ramp.start, `${path}.ramp.start`)
     checkColour(issues, value.ramp.end, `${path}.ramp.end`)
     issues.num(value.ramp, 'fieldMix', `${path}.ramp`, 0, 1)
+  }
+  if (!isObj(value.motion)) issues.add(`${path}.motion`, 'must be { path, travel, angle, pulse, shift }')
+  else {
+    const m = value.motion
+    if (!MASS_PATHS.includes(m.path as never)) issues.add(`${path}.motion.path`, `must be one of ${MASS_PATHS.join(', ')}`)
+    issues.num(m, 'travel', `${path}.motion`, 0, 2)
+    issues.num(m, 'angle', `${path}.motion`, -360, 360)
+    issues.num(m, 'pulse', `${path}.motion`, 0, 0.3)
+    issues.num(m, 'shift', `${path}.motion`, 0, 40)
   }
   return true
 }
@@ -334,13 +373,15 @@ export function validatePreset(raw: unknown): ValidationResult<Preset> {
   if (!Array.isArray(input.masses) || input.masses.length < 1 || input.masses.length > MAX_MASSES) {
     issues.add('masses', `must be one to ${MAX_MASSES} masses`)
   } else {
-    const masses: unknown[] = input.masses.map((mass: unknown) => (isObj(mass) ? withMassDefaults(mass) : mass))
+    const masses: unknown[] = input.masses.map((mass: unknown, i: number) => (isObj(mass) ? withMassDefaults(mass, `masses.${i}`, warnings) : mass))
     input.masses = masses
     masses.forEach((mass, i) => checkMass(issues, mass, `masses.${i}`))
   }
 
   if (!isObj(input.texture)) issues.add('texture', 'must be { grain }')
   else issues.num(input.texture, 'grain', 'texture', 0, 0.5)
+
+  checkCardMotion(issues, input.motion, 'motion')
 
   if (!isObj(input.depth)) issues.add('depth', `must be { ${DEPTH_ORDER.join(', ')} }`)
   else {
@@ -491,15 +532,15 @@ export function validateProject(raw: unknown): ValidationResult<Project> {
   if (!isObj(raw.meta) || typeof raw.meta.created !== 'string') issues.add('meta', 'must be { created }')
 
   let style: unknown
-  if (!isObj(raw.style)) issues.add('style', 'must be { base, masses, texture, modes, depth }')
+  if (!isObj(raw.style)) issues.add('style', 'must be { base, masses, texture, modes, motion, depth }')
   else {
-    const { base, masses, texture, modes, depth } = raw.style
-    const result = validatePreset({ ...PROJECT_SCAFFOLD, base, masses, texture, modes, depth })
+    const { base, masses, texture, modes, motion, depth } = raw.style
+    const result = validatePreset({ ...PROJECT_SCAFFOLD, base, masses, texture, modes, motion, depth })
     for (const w of result.warnings) warnings.push({ path: `style.${w.path}`, message: w.message })
     if (!result.ok) for (const i of result.issues) issues.add(`style.${i.path}`, i.message)
     else {
       const v = result.value
-      style = { base: v.base, masses: v.masses, texture: v.texture, modes: v.modes, depth: v.depth }
+      style = { base: v.base, masses: v.masses, texture: v.texture, modes: v.modes, motion: v.motion, depth: v.depth }
     }
   }
 
@@ -550,19 +591,37 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
     issues.range(input.texture, 'range', 'texture', 0, 0.5)
     issues.bool(input.texture, 'animate', 'texture')
   }
-  if (!isObj(input.motion)) issues.add('motion', 'must be { driftRadius, driftRange, speed, amount, angle }')
+  if (!isObj(input.motion)) issues.add('motion', 'must be { driftRadius, travel, tempo, travelRange, tempoRange, mass, angle }')
   else {
-    // `amount` arrived after the first families were written; default it.
-    const motion: Obj = { ...input.motion, amount: input.motion.amount ?? 0.6 }
+    // Before version 10 the family carried one Motion dial (`amount`,
+    // scaling the drift about 0.6) and `speed`; they become the house
+    // default travel and tempo. The ranges take SPEC.md's defaults.
+    const { amount, speed: _speed, driftRange: _driftRange, ...rest } = input.motion
+    const old = isNum(amount) ? amount : 0.6
+    const motion: Obj = {
+      travel: old,
+      tempo: old < 0.45 ? 1 : old < 0.85 ? 2 : 3,
+      ...MOTION_RANGES_DEFAULT,
+      ...rest,
+    }
+    motion.mass = { ...MOTION_RANGES_DEFAULT.mass, ...(isObj(rest.mass) ? rest.mass : {}) }
     input.motion = motion
     issues.num(motion, 'driftRadius', 'motion', 0, 0.5)
-    issues.range(motion, 'driftRange', 'motion', 0, 0.5)
-    issues.num(motion, 'amount', 'motion', 0, 1)
     issues.num(motion, 'angle', 'motion', -360, 360)
-    issues.num(motion, 'speed', 'motion', 1, 8)
-    if (isNum(motion.speed) && !Number.isInteger(motion.speed)) {
-      issues.add('motion.speed', 'must be a whole number of revolutions per loop, or the loop will not join')
+    issues.num(motion, 'travel', 'motion', 0, 1)
+    issues.num(motion, 'tempo', 'motion', 1, 4)
+    issues.range(motion, 'travelRange', 'motion', 0, 1)
+    issues.range(motion, 'tempoRange', 'motion', 1, 4)
+    if (isNum(motion.tempo) && !Number.isInteger(motion.tempo)) issues.add('motion.tempo', 'must be a whole number of revolutions per loop, or the loop will not join')
+    const tr = motion.tempoRange
+    if (Array.isArray(tr) && !tr.every((n) => Number.isInteger(n))) issues.add('motion.tempoRange', 'must be whole revolutions per loop')
+    const mass = motion.mass as Obj
+    if (!Array.isArray(mass.paths) || !mass.paths.length || !mass.paths.every((p) => MASS_PATHS.includes(p as never))) {
+      issues.add('motion.mass.paths', `must list some of ${MASS_PATHS.join(', ')}`)
     }
+    issues.range(mass, 'travel', 'motion.mass', 0, 2)
+    issues.range(mass, 'pulse', 'motion.mass', 0, 0.3)
+    issues.range(mass, 'shift', 'motion.mass', 0, 40)
   }
   issues.num(input, 'captionZone', '', 0, 0.6)
   // The light arrived after the first families; an older file gets the
@@ -625,12 +684,19 @@ export function validateFamily(raw: unknown): ValidationResult<Family> {
   return { ok: true, value: input as unknown as Family, issues: [], warnings: [] }
 }
 
+/** The house's motion ranges when a family file has none (before version 10). */
+const MOTION_RANGES_DEFAULT = {
+  travelRange: [0.35, 0.85],
+  tempoRange: [1, 3],
+  mass: { paths: [...MASS_PATHS], travel: [0.6, 1.5], pulse: [0, 0.15], shift: [0, 18] },
+}
+
 /** Clamps a number into a range. */
 export const clampTo = (v: number, [min, max]: Range) => Math.min(max, Math.max(min, v))
 
 export const describe = (issues: ValidationIssue[]) => issues.map((i) => `${i.path || '(root)'}: ${i.message}`).join('; ')
 
-const DRAFT_KEYS = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'finish', 'captionMask', 'loop', 'photo'] as const
+const DRAFT_KEYS = ['seed', 'modes', 'base', 'masses', 'texture', 'depth', 'motion', 'finish', 'captionMask', 'loop', 'photo'] as const
 
 /**
  * An overlay (a card's draft from localStorage, or a library card) is a

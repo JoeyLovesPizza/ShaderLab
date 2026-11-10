@@ -121,8 +121,10 @@ export function setProjectSpread(id: string, spread: number) {
 
 // House pull and the other ranges the shuffle reads belong to the family,
 // not to a project: when they move, every background in every project
-// derives again. Light, motion and grain animation do not feed the roll.
-const rollInputs = (f: ReturnType<typeof getFamily>) => stableStringify({ ...f, light: null, motion: null, texture: { ...f.texture, animate: null }, meta: null })
+// derives again. Light, the family's angle and grain animation do not feed
+// the roll; the motion ranges do.
+const rollInputs = (f: ReturnType<typeof getFamily>) =>
+  stableStringify({ ...f, light: null, motion: { ...f.motion, angle: null }, texture: { ...f.texture, animate: null }, meta: null })
 let seenFamily = rollInputs(getFamily())
 subscribeFamily(() => {
   const now = rollInputs(getFamily())

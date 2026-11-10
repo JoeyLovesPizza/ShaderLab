@@ -74,6 +74,13 @@
         "hue": 245,
         "kind": "blob",
         "locked": false,
+        "motion": {
+          "angle": 0,
+          "path": "circle",
+          "pulse": 0,
+          "shift": 0,
+          "travel": 1
+        },
         "path": {
           "control1": {
             "x": 1.35,
@@ -117,6 +124,13 @@
         "hue": 55,
         "kind": "blob",
         "locked": false,
+        "motion": {
+          "angle": 0,
+          "path": "circle",
+          "pulse": 0,
+          "shift": 0,
+          "travel": 1
+        },
         "path": {
           "control1": {
             "x": 0.2,
@@ -160,6 +174,10 @@
       "colour": "warm-cool",
       "coverage": "blend",
       "structure": "none"
+    },
+    "motion": {
+      "tempo": 2,
+      "travel": 0.6
     },
     "texture": {
       "grain": 0.06

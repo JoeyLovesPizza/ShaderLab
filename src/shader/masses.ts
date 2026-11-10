@@ -17,9 +17,10 @@
  *           clamp, OKLab → sRGB with gamut mapping by chroma reduction,
  *           premultiplied by alpha.
  *
- * Motion is periodic by construction: every mass drifts on a circle with
- * the loop phase plus a seeded offset; the swirl's noise samples the same
- * circle. Raw time reaches the shader only as a frame index for the grain
+ * Motion is periodic by construction: every mass drifts along its own
+ * path (circle, ellipse, line, figure eight) at the loop phase times the
+ * card's whole tempo plus a seeded offset, and its pulse and hue sway run
+ * on the same angle; the swirl's noise samples the loop circle. Raw time reaches the shader only as a frame index for the grain
  * hash, and only when grain is animated.
  *
  * Uniform names match src/shader/massesManifest.ts exactly. The 4D simplex
@@ -68,6 +69,8 @@ uniform vec2  u_massEnd[4];
 uniform vec3  u_massLabStart[4];  // a ridge's ramp ends; u_massLab is its middle
 uniform vec3  u_massLabEnd[4];
 uniform float u_massFieldMix[4];  // a ridge's ramp as the field across its chord
+uniform vec4  u_massMotion[4];    // path (0 circle, 1 ellipse, 2 line, 3 figure eight), travel, angle (rad), pulse
+uniform float u_massShift[4];     // the hue's sway, radians either side
 
 uniform float u_light;         // the card's height, 0..1; below zero means off
 uniform float u_lightAngle;    // degrees, the light's direction in the plane
@@ -96,8 +99,8 @@ uniform float u_shadowSpread;
 
 uniform float u_captionMask;   // 0 or 1
 uniform float u_captionZone;
-uniform float u_driftRadius;
-uniform float u_speed;         // revolutions per loop, an integer
+uniform float u_driftRadius;   // the card's travel as a radius, height units
+uniform float u_speed;         // the card's tempo: revolutions per loop, an integer
 uniform float u_angle;         // the family's direction, degrees
 uniform float u_exposure;      // added to every mass's L
 uniform float u_contrast;      // multiplies every mass's chroma
@@ -277,6 +280,31 @@ vec2 cubicAt(vec2 P0, vec2 C1, vec2 C2, vec2 P3, float t) {
   return u * u * u * P0 + 3.0 * u * u * t * C1 + 3.0 * u * t * t * C2 + t * t * t * P3;
 }
 
+// A mass's path at angle a (src/shader/motion.ts is the same maths, for
+// the tests). Every shape is a function of one angle that turns a whole
+// number of times per loop, so the loop joins. The circle ignores the
+// orientation: turning a circle is only a phase shift.
+vec2 pathOffset(float kind, float a, float orient) {
+  if (kind < 0.5) return vec2(cos(a), sin(a));
+  vec2 o;
+  if (kind < 1.5) o = vec2(cos(a), 0.45 * sin(a));
+  else if (kind < 2.5) {
+    // A sway: sin eased again at its ends, so it settles rather than bounces.
+    float s = sin(a);
+    o = vec2(s * (1.5 - 0.5 * s * s), 0.0);
+  } else o = vec2(sin(a), sin(a) * cos(a));
+  float c = cos(orient), sn = sin(orient);
+  return vec2(c * o.x - sn * o.y, sn * o.x + c * o.y);
+}
+
+// The hue's sway: OKLab a, b turned about the grey axis (lightness and
+// chroma kept). Linear, so turning a ridge's mixed ramp colour is the
+// same as turning its three stops together.
+vec3 turnHue(vec3 lab, float by) {
+  float c = cos(by), sn = sin(by);
+  return vec3(lab.x, c * lab.y - sn * lab.z, sn * lab.y + c * lab.z);
+}
+
 float roundedBox(vec2 q, vec2 halfSize, float r) {
   vec2 d = abs(q) - halfSize + r;
   return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
@@ -353,10 +381,17 @@ void main() {
   for (int i = 0; i < 4; i++) {
     if (i >= u_massCount) break;
     vec4 prm = u_massParams[i];   // size, softness, distance, phase offset
+    vec4 mm = u_massMotion[i];    // path, travel, angle, pulse
 
     // Parallax: nearer masses drift more. Off, every mass drifts the same.
-    float r = u_driftRadius * (u_parallax >= 0.0 ? u_parallax * (1.0 - prm.z) : 1.0);
-    vec2 c = u_massPos[i] + r * vec2(cos(phase + prm.w), sin(phase + prm.w));
+    // The mass's own travel scales the card's; its path shapes the drift.
+    float r = u_driftRadius * mm.y * (u_parallax >= 0.0 ? u_parallax * (1.0 - prm.z) : 1.0);
+    float a = phase + prm.w;
+    vec2 c = u_massPos[i] + r * pathOffset(mm.x, a, mm.z);
+    // Pulse swells and shrinks the size (a ridge's half width) and the
+    // height bell with it; the hue sways a quarter turn off it.
+    float sz = prm.x * (1.0 + mm.w * sin(a));
+    float hueBy = u_massShift[i] * cos(a);
 
     vec2 d;
     float dist;
@@ -400,6 +435,7 @@ void main() {
         float tc = clamp(dot(q - P0, chord) / max(dot(chord, chord), 1e-6), 0.0, 1.0);
         vec3 F = tc < 0.5 ? mix(u_massLabStart[i], u_massLab[i], tc * 2.0)
                           : mix(u_massLab[i], u_massLabEnd[i], (tc - 0.5) * 2.0);
+        if (hueBy != 0.0) F = turnHue(F, hueBy);
         F.x += u_exposure;
         F.yz *= u_contrast;
         lab = mix(lab, F, fm);
@@ -415,8 +451,9 @@ void main() {
     // A plateau, not a point: the mass holds its own colour over a core a
     // quarter of its size, then falls off with an exponent the softness
     // shapes (0.4 is a firm block, 0.9 a long tail).
+    if (hueBy != 0.0) M = turnHue(M, hueBy);
     float k = mix(4.0, 1.6, clamp((prm.y - 0.4) / 0.5, 0.0, 1.0));
-    float u = max(dist - 0.25 * prm.x, 0.0) / prm.x;
+    float u = max(dist - 0.25 * sz, 0.0) / sz;
     float f0 = exp(-0.5 * pow(u, k)) * u_massOpacity[i];
     float f = f0 * tilt * u_photoMassWeight;
 
@@ -429,7 +466,7 @@ void main() {
     // the references' hills are domes). Its slope is gentle, continuous,
     // and strongest part way out. Analytic, pointing away from the centre.
     if (dist > 1e-5) {
-      float w = prm.x * 1.1;
+      float w = sz * 1.1;
       float bell = exp(-(dist * dist) / (w * w)) * u_massOpacity[i];
       float dhdd = bell * (-2.0 * dist / (w * w)) * bow;
       // A ridge is a fold: it always rises, whatever its colour, so the
@@ -444,12 +481,12 @@ void main() {
     labLow = mix(labLow, M, f);
     uncovered *= 1.0 - f;
 
-    if (light && dist / prm.x < nearestLight) {
-      nearestLight = dist / prm.x;
+    if (light && dist / sz < nearestLight) {
+      nearestLight = dist / sz;
       nearestF = f;
     }
-    if (dist / prm.x < nearestAny) {
-      nearestAny = dist / prm.x;
+    if (dist / sz < nearestAny) {
+      nearestAny = dist / sz;
       nearestAnyF = f;
     }
   }

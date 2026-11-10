@@ -51,6 +51,7 @@ export function draftOf(preset: Preset): CardDraft {
     masses: preset.masses,
     texture: preset.texture,
     depth: preset.depth,
+    motion: preset.motion,
     finish: preset.finish,
     captionMask: preset.captionMask,
     loop: preset.loop,

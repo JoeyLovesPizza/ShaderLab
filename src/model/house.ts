@@ -19,6 +19,10 @@ const SOFTNESS_LEGAL: Range = [0, 1]
 const MOTION_LENGTH_LEGAL: Range = [0, 0.3]
 const BLUR_RADIUS_LEGAL: Range = [0, 0.15]
 const UNIT: Range = [0, 1]
+const TEMPO_LEGAL: Range = [1, 4]
+const MASS_TRAVEL_LEGAL: Range = [0, 2]
+const PULSE_LEGAL: Range = [0, 0.3]
+const SHIFT_LEGAL: Range = [0, 40]
 
 // Exact at both ends, which a + (b - a) * t is not.
 const lerp = (a: number, b: number, t: number) => a * (1 - t) + b * t
@@ -64,6 +68,13 @@ export function houseRanges(family: Family): Family {
   out.finish.motionBlur.intensity = widen(family.finish.motionBlur.intensity, UNIT, open)
   out.finish.layerBlur.radius = widen(family.finish.layerBlur.radius, BLUR_RADIUS_LEGAL, open)
   out.finish.layerBlur.intensity = widen(family.finish.layerBlur.intensity, UNIT, open)
+  // Motion: toward what the validator allows (tempo stays whole).
+  out.motion.travelRange = widen(family.motion.travelRange, UNIT, open)
+  const tempo = widen(family.motion.tempoRange, TEMPO_LEGAL, open)
+  out.motion.tempoRange = [Math.round(tempo[0]), Math.round(tempo[1])]
+  out.motion.mass.travel = widen(family.motion.mass.travel, MASS_TRAVEL_LEGAL, open)
+  out.motion.mass.pulse = widen(family.motion.mass.pulse, PULSE_LEGAL, open)
+  out.motion.mass.shift = widen(family.motion.mass.shift, SHIFT_LEGAL, open)
   return out
 }
 

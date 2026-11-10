@@ -1,5 +1,6 @@
 import { oklchToLab } from '../palette/ramp'
 import { MAX_MASSES, defaultUniforms, type UniformValues } from '../shader/massesManifest'
+import { PATH_INDEX } from '../shader/motion'
 import { PHOTO_SWIRL_MAX, photoParams } from './photo'
 import { mulberry32 } from './shuffle'
 import { withMassShape, type CardDraft, type Family } from './types'
@@ -57,6 +58,9 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   const labStart: number[] = []
   const labEnd: number[] = []
   const fieldMix: number[] = []
+  const motion: number[] = []
+  const shift: number[] = []
+  const rad = Math.PI / 180
   masses.forEach((raw, i) => {
     const mass = withMassShape(raw)
     lab.push(...oklchToLab(mass.hue, mass.value, mass.chroma))
@@ -71,6 +75,8 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
     labStart.push(...oklchToLab(mass.ramp.start.hue, mass.ramp.start.value, mass.ramp.start.chroma))
     labEnd.push(...oklchToLab(mass.ramp.end.hue, mass.ramp.end.value, mass.ramp.end.chroma))
     fieldMix.push(mass.kind === 'ridge' ? mass.ramp.fieldMix : 0)
+    motion.push(PATH_INDEX[mass.motion.path] ?? 0, mass.motion.travel, mass.motion.angle * rad, mass.motion.pulse)
+    shift.push(mass.motion.shift * rad)
   })
   const fill = (arr: number[], n: number) => {
     while (arr.length < n) arr.push(0)
@@ -89,6 +95,8 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_massLabStart = fill(labStart, 3 * MAX_MASSES)
   u.u_massLabEnd = fill(labEnd, 3 * MAX_MASSES)
   u.u_massFieldMix = fill(fieldMix, MAX_MASSES)
+  u.u_massMotion = fill(motion, 4 * MAX_MASSES)
+  u.u_massShift = fill(shift, MAX_MASSES)
 
   const amount = (layer: { on: boolean; amount: number }) => (layer.on ? layer.amount : -1)
   const d = draft.depth
@@ -122,8 +130,8 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_strokesTaper = d.strokes.taper
   u.u_strokesChaos = d.strokes.chaos
   u.u_strokesFollow = d.strokes.follow
-  // The fibres' own motion, scaled by the one Motion dial like the drift.
-  u.u_strokesMotion = Math.min(1, d.strokes.motion * (family.motion.amount / 0.6))
+  // The fibres' own motion, scaled by the card's travel like the drift.
+  u.u_strokesMotion = Math.min(1, d.strokes.motion * (draft.motion.travel / 0.6))
   u.u_shadow = amount(d.shadow)
   u.u_shadowRect = [...d.shadow.rect]
   u.u_shadowOffset = d.shadow.offset
@@ -152,12 +160,12 @@ export function packUniforms(draft: CardDraft, family: Family, aspect = DEFAULT_
   u.u_grainAnimate = family.texture.animate ? 1 : 0
   u.u_captionMask = draft.captionMask ? 1 : 0
   u.u_captionZone = family.captionZone
-  // The Motion dial: one knob. It scales the drift radius (card widths,
-  // so × aspect into the shader's units) about its 0.6 default, and picks
-  // the revolutions per loop, which must stay whole for a seamless loop.
-  const motion = family.motion.amount
-  u.u_driftRadius = family.motion.driftRadius * aspect * (motion / 0.6)
-  u.u_speed = motion < 0.45 ? 1 : motion < 0.85 ? 2 : 3
+  // The card's motion stage: travel scales the family's drift radius
+  // (card widths, so × aspect into the shader's units) about 0.6, the
+  // drift every card had before; tempo is whole revolutions per loop,
+  // rounded in case, or the loop would not join.
+  u.u_driftRadius = family.motion.driftRadius * aspect * (draft.motion.travel / 0.6)
+  u.u_speed = Math.max(1, Math.round(draft.motion.tempo))
   u.u_angle = family.motion.angle
   return u
 }
